@@ -1,86 +1,47 @@
 # Ultra Simple PHP Gallery
 
-A simple, modern PHP gallery system with password protection and admin panel.
+The most simple photo gallery! Just upload it to your Apache/PHP server. It focuses on being fast, minimal, and easy: upload the `web/` folder, visit `admin/`, set an admin password, and let your friends add photos (passwordless or with password)
 
-## Features
+## What it does
 
-- **Password-protected galleries** - Each gallery can have its own password for upload/delete operations
-- **Public viewing** - Anyone with the gallery name can view images (no password needed)
-- **Admin panel** - Create galleries, set passwords, manage all galleries
-- **Automatic thumbnails** - Thumbnails are generated automatically using ImageMagick
-- **Image compression** - Images are automatically resized to max 1080px width (client-side and server-side)
-- **Bulk upload** - Upload multiple files at once with drag & drop support
-- **Modern UI** - Clean, responsive design with dark theme
+- Simple hosting: upload the `web/` directory to your server and go.
+- Self-serve admin: visit `admin/` to set or change the admin password.
+- Passworded or passwordless uploads: choose per gallery if uploads need a password.
+- Drag-and-drop multi-upload: supports many files at once and even whole directories.
+- Subfolder browsing: galleries can be nested; thumbnails are generated automatically.
+- Automatic thumbnails: imagick creates fast-loading thumbs on upload.
+- Zip export: your friends can download an entire gallery as a zip.
 
-## Installation
+## Quick start
 
-1. Upload the `web/` directory contents to your web server
-2. Ensure PHP has ImageMagick extension enabled
-3. Set up admin credentials:
-   - Create `admin/.username` file with your admin username
-   - Create `admin/.password` file with a hashed password (use `password_hash()`)
-   - Example: `echo '<?php echo password_hash("yourpassword", PASSWORD_DEFAULT); ?>' | php > admin/.password`
-4. Set proper permissions:
-   - `data/` directory should be writable by the web server
-   - `admin/.username` and `admin/.password` should be readable by the web server (chmod 600 recommended)
-
-## Usage
-
-### Accessing a Gallery
-
-Visit `index.html?gallery=your-gallery-name` to view a gallery.
-
-### Uploading Files
-
-1. Enter the gallery password when prompted
-2. Click "Upload" or drag & drop files
-3. Files will be automatically compressed and thumbnails generated
-
-### Admin Panel
-
-1. Visit `admin/index.html`
-2. Login with your admin credentials
-3. Create galleries, set passwords, and manage files
-
-## File Structure
-
-```
-web/
-├── index.html          # Main gallery interface
-├── style.css           # Gallery styles
-├── app.js              # Gallery JavaScript
-├── icon.svg            # Icon/logo
-├── api/
-│   ├── index.php       # Main API endpoint
-│   └── helper.php      # Helper functions (included only)
-├── admin/
-│   ├── index.html      # Admin panel
-│   ├── style.css       # Admin styles
-│   ├── app.js          # Admin JavaScript
-│   ├── api.php         # Admin API endpoint
-│   ├── .username       # Admin username
-│   └── .password       # Admin password (hashed)
-└── data/               # Gallery folders
-    └── gallery-name/
-        ├── .password   # Gallery password (hashed)
-        └── files...    # Gallery files
-```
-
-## Security Notes
-
-- Gallery passwords are hashed using PHP's `password_hash()`
-- Admin credentials are stored in `admin/.username` and `admin/.password`
-- All file paths are validated to prevent directory traversal
-- Only images and videos are allowed for upload
-- Gallery folder names are sanitized (alphanumeric, underscore, hyphen only)
+1) Copy `web/` to your Apache/PHP host (ImageMagick extension required).  
+2) Make sure `web/data/` is writable by the web server user.  
+3) Open `https://yourdomain/admin/` in the browser.  
+4) Set an admin user and password when prompted.  
+5) Create a gallery, just give it a name and a password (optional)
+6) Send the link of the gallery to your friends and let them upload
+7) Upload images (single, multi-file, or directory upload). Thumbnails generate on the fly.
 
 ## Requirements
 
-- PHP 7.4+
-- ImageMagick PHP extension
-- Web server with PHP support
+- PHP 7.4+ with ImageMagick enabled
+- Apache (or any PHP-capable server) with write access to `web/data/`
 
-## License
+## File layout (key parts)
 
-MIT
+```
+web/
+├── index.html      # Public gallery UI
+├── app.js          # Gallery logic
+├── style.css       # Gallery styles
+├── api/            # Public API for listing/viewing
+├── admin/          # Admin UI + upload API
+└── data/           # Uploaded images and thumbnails (writable)
+```
+
+## Notes
+
+- Passwords are stored hashed; use strong ones for admin.
+- Only image uploads are intended; keep `data/` writable and `.htaccess` in place.
+- Zip downloads are generated server-side for convenience.
 
