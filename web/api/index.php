@@ -11,7 +11,7 @@ header('Access-Control-Allow-Headers: Content-Type');
 
 require_once __DIR__ . '/helper.php';
 
-$action = $_GET['action'] ?? '';
+$action = isset($_GET['action']) ? $_GET['action'] : '';
 
 switch ($action) {
     case 'list':
@@ -41,10 +41,10 @@ switch ($action) {
 }
 
 function handleList() {
-    $gallery = $_GET['gallery'] ?? '';
-    $dir = $_GET['dir'] ?? '';
-    $view = $_GET['view'] ?? 'dir';
-    $viewPassword = $_GET['viewPassword'] ?? '';
+    $gallery = isset($_GET['gallery']) ? $_GET['gallery'] : '';
+    $dir = isset($_GET['dir']) ? $_GET['dir'] : '';
+    $view = isset($_GET['view']) ? $_GET['view'] : 'dir';
+    $viewPassword = isset($_GET['viewPassword']) ? $_GET['viewPassword'] : '';
     
     if (empty($gallery)) {
         http_response_code(400);
@@ -98,13 +98,13 @@ function handleList() {
 }
 
 function handleUpload() {
-    $gallery = $_GET['gallery'] ?? '';
-    $password = $_GET['password'] ?? '';
-    $viewPassword = $_GET['viewPassword'] ?? '';
+    $gallery = isset($_GET['gallery']) ? $_GET['gallery'] : '';
+    $password = isset($_GET['password']) ? $_GET['password'] : '';
+    $viewPassword = isset($_GET['viewPassword']) ? $_GET['viewPassword'] : '';
     $settings = getSettings();
-    $maxImageWidth = (int) ($settings['maxImageWidth'] ?? 0);
-    $maxImageFileSize = (int) ($settings['maxImageFileSize'] ?? 0);
-    $maxFileSize = (int) ($settings['maxFileSize'] ?? 0);
+    $maxImageWidth = (int) (isset($settings['maxImageWidth']) ? $settings['maxImageWidth'] : 0);
+    $maxImageFileSize = (int) (isset($settings['maxImageFileSize']) ? $settings['maxImageFileSize'] : 0);
+    $maxFileSize = (int) (isset($settings['maxFileSize']) ? $settings['maxFileSize'] : 0);
     
     if (empty($gallery)) {
         http_response_code(400);
@@ -154,9 +154,9 @@ function handleUpload() {
     
     $file = $_FILES['file'];
     $filename = basename($file['name']);
-    $requestedPath = $_POST['path'] ?? $filename;
+    $requestedPath = isset($_POST['path']) ? $_POST['path'] : $filename;
     $isImage = isImageFile($filename);
-    $originalSize = $file['size'] ?? filesize($file['tmp_name']);
+    $originalSize = isset($file['size']) ? $file['size'] : filesize($file['tmp_name']);
     
     // Sanitize path and preserve folder hierarchy (if provided)
     $relativePath = sanitizeRelativePath($requestedPath);
@@ -175,7 +175,7 @@ function handleUpload() {
     $pathInfo = pathinfo($relativePath);
     $dirPart = $pathInfo['dirname'] !== '.' ? $pathInfo['dirname'] : '';
     $baseName = sanitizePathSegment($pathInfo['basename']);
-    $extension = $pathInfo['extension'] ?? '';
+    $extension = isset($pathInfo['extension']) ? $pathInfo['extension'] : '';
     
     // Ensure directory exists
     $targetDir = $dirPart ? $galleryPath . '/' . $dirPart : $galleryPath;
@@ -192,7 +192,7 @@ function handleUpload() {
     
     // Handle overwrite (keep in same dir)
     if (file_exists($targetPath)) {
-        $nameOnly = $pathInfo['filename'] ?? pathinfo($baseName, PATHINFO_FILENAME);
+        $nameOnly = isset($pathInfo['filename']) ? $pathInfo['filename'] : pathinfo($baseName, PATHINFO_FILENAME);
         $ext = $extension ? '.' . $extension : (pathinfo($baseName, PATHINFO_EXTENSION) ? '.' . pathinfo($baseName, PATHINFO_EXTENSION) : '');
         $counter = 1;
         do {
@@ -335,10 +335,10 @@ function handleUpload() {
 }
 
 function handleDelete() {
-    $gallery = $_GET['gallery'] ?? '';
-    $file = $_GET['file'] ?? '';
-    $password = $_GET['password'] ?? '';
-    $viewPassword = $_GET['viewPassword'] ?? '';
+    $gallery = isset($_GET['gallery']) ? $_GET['gallery'] : '';
+    $file = isset($_GET['file']) ? $_GET['file'] : '';
+    $password = isset($_GET['password']) ? $_GET['password'] : '';
+    $viewPassword = isset($_GET['viewPassword']) ? $_GET['viewPassword'] : '';
     
     if (empty($gallery) || empty($file)) {
         http_response_code(400);
@@ -409,8 +409,8 @@ function handleDelete() {
 }
 
 function handleDownloadZip() {
-    $gallery = $_GET['gallery'] ?? '';
-    $viewPassword = $_GET['viewPassword'] ?? '';
+    $gallery = isset($_GET['gallery']) ? $_GET['gallery'] : '';
+    $viewPassword = isset($_GET['viewPassword']) ? $_GET['viewPassword'] : '';
     
     if (empty($gallery)) {
         http_response_code(400);
@@ -511,10 +511,10 @@ function handleDownloadZip() {
 }
 
 function handleAuth() {
-    $gallery = $_GET['gallery'] ?? $_POST['gallery'] ?? '';
-    $type = $_GET['type'] ?? $_POST['type'] ?? 'edit';
-    $password = $_GET['password'] ?? $_POST['password'] ?? '';
-    $viewPassword = $_GET['viewPassword'] ?? $_POST['viewPassword'] ?? '';
+    $gallery = isset($_GET['gallery']) ? $_GET['gallery'] : (isset($_POST['gallery']) ? $_POST['gallery'] : '');
+    $type = isset($_GET['type']) ? $_GET['type'] : (isset($_POST['type']) ? $_POST['type'] : 'edit');
+    $password = isset($_GET['password']) ? $_GET['password'] : (isset($_POST['password']) ? $_POST['password'] : '');
+    $viewPassword = isset($_GET['viewPassword']) ? $_GET['viewPassword'] : (isset($_POST['viewPassword']) ? $_POST['viewPassword'] : '');
     
     if (empty($gallery)) {
         http_response_code(400);

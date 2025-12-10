@@ -6,9 +6,9 @@
 
 require_once __DIR__ . '/helper.php';
 
-$gallery = $_GET['gallery'] ?? '';
-$file = $_GET['file'] ?? '';
-$viewPassword = $_GET['viewPassword'] ?? '';
+$gallery = isset($_GET['gallery']) ? $_GET['gallery'] : '';
+$file = isset($_GET['file']) ? $_GET['file'] : '';
+$viewPassword = isset($_GET['viewPassword']) ? $_GET['viewPassword'] : '';
 
 if (empty($gallery) || empty($file)) {
     http_response_code(400);
@@ -105,7 +105,7 @@ if (!$mimeType) {
         'gz' => 'application/gzip',
         'tgz' => 'application/gzip',
     ];
-    $mimeType = $mimeTypes[$ext] ?? 'application/octet-stream';
+    $mimeType = isset($mimeTypes[$ext]) ? $mimeTypes[$ext] : 'application/octet-stream';
 }
 
 // Set headers

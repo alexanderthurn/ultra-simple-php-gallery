@@ -12,7 +12,9 @@ header('Access-Control-Allow-Headers: Content-Type');
 
 require_once dirname(__DIR__) . '/api/helper.php';
 
-$action = $_GET['action'] ?? $_POST['action'] ?? '';
+$action = isset($_GET['action'])
+    ? $_GET['action']
+    : (isset($_POST['action']) ? $_POST['action'] : '');
 
 switch ($action) {
     case 'login':
@@ -78,8 +80,8 @@ function requireAdmin() {
 }
 
 function handleLogin() {
-    $username = $_POST['username'] ?? '';
-    $password = $_POST['password'] ?? '';
+    $username = isset($_POST['username']) ? $_POST['username'] : '';
+    $password = isset($_POST['password']) ? $_POST['password'] : '';
     
     if (empty($username) || empty($password)) {
         http_response_code(400);
@@ -186,9 +188,9 @@ function handleListGalleries() {
 function handleCreateGallery() {
     requireAdmin();
     
-    $name = $_POST['name'] ?? '';
-    $password = $_POST['password'] ?? '';
-    $viewPassword = $_POST['view_password'] ?? '';
+    $name = isset($_POST['name']) ? $_POST['name'] : '';
+    $password = isset($_POST['password']) ? $_POST['password'] : '';
+    $viewPassword = isset($_POST['view_password']) ? $_POST['view_password'] : '';
     
     if (empty($name)) {
         http_response_code(400);
@@ -236,9 +238,9 @@ function handleCreateGallery() {
 function handleSetPassword() {
     requireAdmin();
     
-    $gallery = $_POST['gallery'] ?? '';
-    $password = $_POST['password'] ?? '';
-    $type = $_POST['type'] ?? 'edit'; // 'edit' or 'view'
+    $gallery = isset($_POST['gallery']) ? $_POST['gallery'] : '';
+    $password = isset($_POST['password']) ? $_POST['password'] : '';
+    $type = isset($_POST['type']) ? $_POST['type'] : 'edit'; // 'edit' or 'view'
     
     if (empty($gallery)) {
         http_response_code(400);
@@ -296,7 +298,7 @@ function handleSetPassword() {
 function handleDeleteGallery() {
     requireAdmin();
     
-    $name = $_POST['name'] ?? '';
+    $name = isset($_POST['name']) ? $_POST['name'] : '';
     
     if (empty($name)) {
         http_response_code(400);
@@ -340,8 +342,8 @@ function handleDeleteGallery() {
 function handleRenameGallery() {
     requireAdmin();
 
-    $oldName = $_POST['old_name'] ?? '';
-    $newName = $_POST['new_name'] ?? '';
+    $oldName = isset($_POST['old_name']) ? $_POST['old_name'] : '';
+    $newName = isset($_POST['new_name']) ? $_POST['new_name'] : '';
 
     if (empty($oldName) || empty($newName)) {
         http_response_code(400);
@@ -443,7 +445,7 @@ function handleChangeAdminPassword() {
 function handleGetPage() {
     requireAdmin();
     
-    $page = $_GET['page'] ?? '';
+    $page = isset($_GET['page']) ? $_GET['page'] : '';
     $allowed = ['imprint.html', 'dataprivacy.html'];
     
     if (!in_array($page, $allowed, true)) {
@@ -466,8 +468,8 @@ function handleGetPage() {
 function handleSavePage() {
     requireAdmin();
     
-    $page = $_POST['page'] ?? '';
-    $content = $_POST['content'] ?? '';
+    $page = isset($_POST['page']) ? $_POST['page'] : '';
+    $content = isset($_POST['content']) ? $_POST['content'] : '';
     $allowed = ['imprint.html', 'dataprivacy.html'];
     
     if (!in_array($page, $allowed, true)) {
