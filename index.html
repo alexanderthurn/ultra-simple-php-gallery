@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NAS Explorer</title>
+    <style>
+        /* --- LAYOUT & BASIS --- */
+        :root { --sidebar-width: 300px; --bg-dark: #1a1a1a; --bg-panel: #252525; --accent: #3498db; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg-dark); color: #e0e0e0; margin: 0; height: 100vh; overflow: hidden; display: flex; }
+        
+        /* --- SIDEBAR (BAUM) --- */
+        #sidebar {
+            width: var(--sidebar-width); background: #111; border-right: 1px solid #333;
+            overflow-y: auto; padding: 10px; display: flex; flex-direction: column; flex-shrink: 0;
+        }
+        .tree-item { cursor: pointer; user-select: none; }
+        .tree-row { 
+            display: flex; align-items: center; padding: 4px 8px; border-radius: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .tree-row:hover { background: #333; }
+        .tree-row.active { background: var(--accent); color: #fff; }
+        .tree-icon { margin-right: 8px; font-size: 14px; width: 14px; text-align: center; color: #888; }
+        .tree-label { font-size: 14px; }
+        .tree-children { margin-left: 18px; display: none; border-left: 1px solid #333; }
+        .tree-children.expanded { display: block; }
+        .has-children > .tree-row > .tree-icon::before { content: '▶'; font-size: 10px; display: inline-block; transition: transform 0.2s; }
+        .has-children.open > .tree-row > .tree-icon::before { transform: rotate(90deg); }
+
+        /* --- MAIN AREA (GALERIE) --- */
+        #main { flex-grow: 1; overflow-y: auto; padding: 20px; position: relative; }
+        h1 { margin: 0 0 20px 0; font-size: 1.5rem; font-weight: 300; border-bottom: 1px solid #333; padding-bottom: 10px; }
+        
+        .gallery-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 15px; }
+        
+        .file-card { 
+            background: var(--bg-panel); border-radius: 6px; overflow: hidden; aspect-ratio: 1; 
+            position: relative; cursor: pointer; transition: transform 0.2s; border: 1px solid #333;
+        }
+        .file-card:hover { transform: scale(1.03); border-color: var(--accent); }
+        .file-card img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        
+        /* Video Styling im Grid */
+        .video-thumb { 
+            width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; 
+            background: #000; color: #fff; flex-direction: column;
+        }
+        .play-icon { font-size: 40px; opacity: 0.8; }
+        .file-name { 
+            position: absolute; bottom: 0; left: 0; right: 0; background: rgba(0,0,0,0.7); 
+            font-size: 11px; padding: 4px; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+
+        /* --- LIGHTBOX --- */
+        #lightbox {
+            display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.95); justify-content: center; align-items: center; flex-direction: column;
+        }
+        #lightbox.active { display: flex; }
+        #lightbox-content { max-width: 95%; max-height: 85vh; display: flex; justify-content: center; align-items: center; }
+        #lightbox-content img, #lightbox-content video { max-width: 100%; max-height: 85vh; box-shadow: 0 0 30px rgba(0,0,0,0.5); }
+        .lb-nav {
+            position: absolute; top: 50%; transform: translateY(-50%); color: #fff; font-size: 40px; 
+            cursor: pointer; padding: 20px; user-select: none; opacity: 0.5; transition: opacity 0.2s;
+        }
+        .lb-nav:hover { opacity: 1; }
+        .lb-prev { left: 10px; }
+        .lb-next { right: 10px; }
+        .lb-close { position: absolute; top: 15px; right: 25px; font-size: 40px; cursor: pointer; color: #fff; }
+        #lb-caption { margin-top: 15px; color: #aaa; font-family: monospace; }
+        
+        /* Loading Spinner */
+        .spinner { border: 3px solid #333; border-top: 3px solid var(--accent); border-radius: 50%; width: 20px; height: 20px; animation: spin 1s linear infinite; display: none; margin-left: auto;}
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        @media (max-width: 768px) {
+            body { flex-direction: column; }
+            #sidebar { width: 100%; height: 30%; border-right: none; border-bottom: 1px solid #333; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="sidebar">
+        <div style="color:#666; font-size:12px; margin-bottom:10px;">VERZEICHNISSE</div>
+        <div id="tree-root"></div>
+    </div>
+
+    <div id="main">
+        <h1 id="folder-title">Startseite</h1>
+        <div id="gallery" class="gallery-grid"></div>
+    </div>
+
+    <div id="lightbox">
+        <span class="lb-close" onclick="closeLightbox()">&times;</span>
+        <div class="lb-nav lb-prev" onclick="changeSlide(-1)">&#10094;</div>
+        <div class="lb-nav lb-next" onclick="changeSlide(1)">&#10095;</div>
+        <div id="lightbox-content"></div>
+        <div id="lb-caption"></div>
+    </div>
+
+    <script>
+        // --- CONFIG ---
+        const imgExt = /\.(jpg|jpeg|png|gif|webp|tiff|bmp)[\/]?$/i;
+        const vidExt = /\.(mp4|mov|webm|mkv|avi|m4v)[\/]?$/i;
+        const myFilename = window.location.pathname.split('/').pop() || 'gallery.html';
+
+        // State
+        let currentFiles = []; // Liste der Dateien im aktuellen Ordner
+        let currentIndex = 0;
+
+        // --- INIT ---
+        const startPath = window.location.href.endsWith('/') ? '../' : './';
+        const treeRoot = document.getElementById('tree-root');
+        
+        // Starte mit dem Root-Verzeichnis
+        createTreeItem(startPath, 'Hauptverzeichnis', treeRoot, true);
+
+
+        // --- CORE FUNCTIONS ---
+
+        // 1. Erstellt einen Eintrag im Baum
+        function createTreeItem(path, label, container, isOpen = false) {
+            const itemDiv = document.createElement('div');
+            itemDiv.className = 'tree-item has-children'; // Wir nehmen optimistisch an, es gibt Kinder
+            if (isOpen) itemDiv.classList.add('open');
+
+            const row = document.createElement('div');
+            row.className = 'tree-row';
+            
+            // Icon + Label
+            row.innerHTML = `<span class="tree-icon"></span><span class="tree-label">${label}</span><div class="spinner"></div>`;
+            
+            // Container für Unterordner
+            const childrenContainer = document.createElement('div');
+            childrenContainer.className = 'tree-children';
+            if (isOpen) childrenContainer.classList.add('expanded');
+
+            itemDiv.appendChild(row);
+            itemDiv.appendChild(childrenContainer);
+            container.appendChild(itemDiv);
+
+            // Klick-Event
+            row.addEventListener('click', async (e) => {
+                // UI Update
+                document.querySelectorAll('.tree-row').forEach(el => el.classList.remove('active'));
+                row.classList.add('active');
+                
+                // Toggle Ordner
+                const wasOpen = itemDiv.classList.contains('open');
+                
+                if (wasOpen && !e.target.closest('.tree-icon')) {
+                    // Wenn schon offen und Klick auf Text -> Nur Galerie laden, nicht zuklappen
+                    loadGalleryContent(path, label);
+                } else if (wasOpen) {
+                    // Zuklappen
+                    itemDiv.classList.remove('open');
+                    childrenContainer.classList.remove('expanded');
+                } else {
+                    // Aufklappen & Laden
+                    itemDiv.classList.add('open');
+                    childrenContainer.classList.add('expanded');
+                    await loadFolderData(path, childrenContainer);
+                    loadGalleryContent(path, label); // Auch gleich rechts anzeigen
+                }
+            });
+
+            // Wenn es der Root-Ordner ist, lade sofort
+            if (isOpen) {
+                loadFolderData(path, childrenContainer).then(() => {
+                    loadGalleryContent(path, label);
+                    row.classList.add('active');
+                });
+            }
+        }
+
+        // 2. Scannt Ordner und befüllt Baum (Unterordner) + Cache für Galerie
+        // Wir speichern die gefundenen Bilder temporär am DOM-Element, um Traffic zu sparen
+        async function loadFolderData(path, childrenContainer) {
+            // Wenn schon geladen, nicht nochmal laden (außer man will Refresh erzwingen)
+            if (childrenContainer.hasChildNodes()) return;
+
+            const spinner = childrenContainer.parentElement.querySelector('.spinner');
+            if(spinner) spinner.style.display = 'block';
+
+            try {
+                const response = await fetch(path);
+                const text = await response.text();
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(text, 'text/html');
+
+                let elements = Array.from(doc.querySelectorAll('tbody tr'));
+                if (elements.length === 0) elements = Array.from(doc.querySelectorAll('a'));
+
+                const subfolders = [];
+                const files = [];
+
+                for (const el of elements) {
+                    let link = (el.tagName === 'A') ? el : el.querySelector('.n a');
+                    let typeCol = el.querySelector ? el.querySelector('.t') : null;
+                    if (!link) continue;
+                    
+                    let href = link.getAttribute('href');
+                    if (!href || href.startsWith('?') || href === './' || href === '../') continue;
+                    if (href.includes(myFilename)) continue;
+
+                    let fullPath = path + href;
+                    // Fix für absolute Pfade wenn fetch './' war
+                    if (!href.startsWith(path) && !href.startsWith('http') && !href.startsWith('/')) {
+                        // relative
+                    } 
+                    
+                    const cleanHref = href.replace(/\/$/, '');
+                    const isDir = href.endsWith('/') && !cleanHref.endsWith('.html');
+                    
+                    // --- DATEI CHECK ---
+                    if (imgExt.test(cleanHref)) {
+                        files.push({ type: 'img', url: fullPath.replace(/\/$/, ''), name: cleanHref });
+                    } else if (vidExt.test(cleanHref)) {
+                        files.push({ type: 'vid', url: fullPath.replace(/\/$/, ''), name: cleanHref });
+                    }
+                    // --- ORDNER CHECK ---
+                    else if (isDir) {
+                        if (typeCol && typeCol.textContent.trim() !== 'Directory') continue;
+                        subfolders.push({ path: fullPath, name: cleanHref });
+                    }
+                }
+
+                // 1. Unterordner in den Baum einhängen
+                subfolders.forEach(folder => {
+                    createTreeItem(folder.path, folder.name, childrenContainer, false);
+                });
+                
+                // Wenn keine Unterordner, Pfeil entfernen
+                if (subfolders.length === 0) {
+                    childrenContainer.parentElement.classList.remove('has-children');
+                }
+
+                // 2. Dateien am Container speichern (als Property) für späteren Zugriff
+                childrenContainer.dataset.files = JSON.stringify(files);
+
+            } catch (err) {
+                console.error("Fehler beim Laden:", path, err);
+            } finally {
+                if(spinner) spinner.style.display = 'none';
+            }
+        }
+
+        // 3. Zeigt die Bilder/Videos im rechten Bereich an
+        function loadGalleryContent(path, folderName) {
+            document.getElementById('folder-title').textContent = folderName;
+            const gallery = document.getElementById('gallery');
+            gallery.innerHTML = '';
+
+            // Wir suchen den childrenContainer, der zu diesem Pfad gehört
+            // Da wir keine ID haben, suchen wir im DOM nach dem aktiven Tree-Item
+            // Einfacher: Wir haben die Files beim Scannen in dataset gespeichert.
+            // Aber Achtung: Wenn wir nur auf den Text klicken, müssen wir sicherstellen, dass Daten da sind.
+            // Wir greifen hier auf einen kleinen Trick zurück: Wir traversieren den Tree nicht neu, 
+            // sondern nutzen die Variable, wenn wir sie hätten.
+            
+            // Sauberer Weg: Wir holen die Daten aus dem DOM des aktiven Elements
+            const activeRow = document.querySelector('.tree-row.active');
+            if (!activeRow) return;
+            
+            const childrenContainer = activeRow.parentNode.querySelector('.tree-children');
+            if (!childrenContainer || !childrenContainer.dataset.files) {
+                gallery.innerHTML = '<div style="padding:20px; color:#666;">Keine Dateien oder Ordner noch nicht geladen.</div>';
+                return;
+            }
+
+            const files = JSON.parse(childrenContainer.dataset.files);
+            currentFiles = files; // Globale Liste aktualisieren für Lightbox
+
+            if (files.length === 0) {
+                gallery.innerHTML = '<div style="padding:20px; color:#666;">Dieser Ordner ist leer.</div>';
+                return;
+            }
+
+            files.forEach((file, index) => {
+                const card = document.createElement('div');
+                card.className = 'file-card';
+                card.onclick = () => openLightbox(index);
+
+                if (file.type === 'img') {
+                    card.innerHTML = `<img src="${file.url}" loading="lazy" alt="${file.name}"><div class="file-name">${file.name}</div>`;
+                } else {
+                    // Video Platzhalter
+                    card.innerHTML = `
+                        <div class="video-thumb">
+                            <div class="play-icon">▶</div>
+                            <div style="font-size:10px; margin-top:5px;">VIDEO</div>
+                        </div>
+                        <div class="file-name">${file.name}</div>`;
+                }
+                gallery.appendChild(card);
+            });
+        }
+
+        // --- LIGHTBOX LOGIK ---
+        const lb = document.getElementById('lightbox');
+        const lbContent = document.getElementById('lightbox-content');
+        const lbCaption = document.getElementById('lb-caption');
+
+        function openLightbox(index) {
+            currentIndex = index;
+            updateLightbox();
+            lb.classList.add('active');
+            document.activeElement.blur();
+        }
+
+        function closeLightbox() {
+            lb.classList.remove('active');
+            lbContent.innerHTML = ''; // Video stoppen / Speicher freigeben
+        }
+
+        function changeSlide(dir) {
+            currentIndex += dir;
+            if (currentIndex >= currentFiles.length) currentIndex = 0;
+            if (currentIndex < 0) currentIndex = currentFiles.length - 1;
+            updateLightbox();
+        }
+
+        function updateLightbox() {
+            const file = currentFiles[currentIndex];
+            lbContent.innerHTML = ''; // Reset
+            
+            if (file.type === 'img') {
+                const img = document.createElement('img');
+                img.src = file.url;
+                lbContent.appendChild(img);
+            } else {
+                const vid = document.createElement('video');
+                vid.src = file.url;
+                vid.controls = true;
+                vid.autoplay = true;
+                // vid.style.maxWidth = "100%";
+                lbContent.appendChild(vid);
+            }
+            lbCaption.textContent = `${currentIndex + 1} / ${currentFiles.length} - ${file.name}`;
+        }
+
+        // Tasten
+        document.addEventListener('keydown', e => {
+            if (!lb.classList.contains('active')) return;
+            if (e.key === 'ArrowLeft') changeSlide(-1);
+            if (e.key === 'ArrowRight') changeSlide(1);
+            if (e.key === 'Escape') closeLightbox();
+        });
+        lb.addEventListener('click', e => {
+            if (e.target === lb || e.target === lbContent) closeLightbox();
+        });
+
+    </script>
+</body>
+</html>
