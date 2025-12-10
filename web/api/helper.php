@@ -182,7 +182,7 @@ function getFileCategory($filename) {
     $ext = getFileExtension($filename);
     
     $imageExts = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'tiff', 'bmp', 'heic'];
-    $videoExts = ['mp4', 'mov', 'webm', 'mkv', 'avi', 'm4v'];
+    $videoExts = ['mp4', 'mov', 'webm', 'mkv', 'avi', 'm4v', 'wmv'];
     $audioExts = ['mp3', 'wav', 'ogg', 'm4a', 'aac', 'flac'];
     $documentExts = ['pdf', 'txt', 'csv', 'json', 'md', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx'];
     $archiveExts = ['zip', 'rar', '7z', 'tar', 'gz', 'tgz'];

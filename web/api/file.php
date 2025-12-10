@@ -70,6 +70,7 @@ if (!$mimeType) {
         'mkv' => 'video/x-matroska',
         'avi' => 'video/x-msvideo',
         'm4v' => 'video/x-m4v',
+        'wmv' => 'video/x-ms-wmv',
         'mp3' => 'audio/mpeg',
         'wav' => 'audio/wav',
         'ogg' => 'audio/ogg',

@@ -393,6 +393,10 @@ function displayGallery(files) {
 // Helpers for non-image/video files
 function formatFileType(type) {
     switch (type) {
+        case 'image':
+            return 'Image';
+        case 'video':
+            return 'Video';
         case 'audio':
             return 'Audio';
         case 'document':
@@ -772,6 +776,16 @@ function updateLightbox() {
         video.src = getFileUrl(file.path);
         video.controls = true;
         video.autoplay = true;
+        video.addEventListener('error', () => {
+            // Fallback for unsupported video formats: offer download instead of a broken player
+            lightboxContent.innerHTML = '';
+            const fallback = createFileViewer(file);
+            const note = document.createElement('div');
+            note.className = 'file-meta';
+            note.textContent = 'Playback not supported in this browser. Use Download.';
+            fallback.appendChild(note);
+            lightboxContent.appendChild(fallback);
+        });
         lightboxContent.appendChild(video);
         if (lightboxCenterHotspot) lightboxCenterHotspot.style.display = 'none';
     } else if (file.type === 'audio') {
