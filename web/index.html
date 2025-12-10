@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gallery</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="icon" href="icon.svg" type="image/svg+xml">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <div class="header-content">
+                <img src="icon.svg" alt="Gallery" class="logo">
+                <h1>Gallery</h1>
+            </div>
+            <div class="header-right" id="header-right" style="display: none;">
+                <div class="login-wrapper" id="login-wrapper" style="display: none;">
+                    <input type="password" id="header-password-input" placeholder="Password" class="header-password-input">
+                    <button id="login-btn" class="btn-primary">Login</button>
+                </div>
+                <div class="logged-in-wrapper" id="logged-in-wrapper" style="display: none;">
+                    <span class="logged-in-text">Logged In</span>
+                    <button id="logout-btn" class="btn-secondary">Logout</button>
+                </div>
+            </div>
+        </header>
+
+        <main class="main-content">
+            <div id="gallery-info" class="gallery-info" style="display: none;">
+                <h2 id="gallery-title"></h2>
+                <div class="gallery-actions">
+                    <button id="download-zip-btn" class="btn-secondary">Download ZIP</button>
+                    <button id="upload-btn" class="btn-primary">Upload</button>
+                    <button id="close-upload-btn" class="btn-secondary" style="display: none;">Close</button>
+                    <input type="file" id="file-input" multiple accept="image/*,video/*" style="display: none;">
+                </div>
+            </div>
+
+            <div id="password-modal" class="modal" style="display: none;">
+                <div class="modal-content">
+                    <h3>Password Required</h3>
+                    <p>Enter the gallery password to upload or delete files.</p>
+                    <input type="password" id="password-input" placeholder="Password">
+                    <div class="modal-actions">
+                        <button id="password-submit" class="btn-primary">Submit</button>
+                        <button id="password-cancel" class="btn-secondary">Cancel</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="upload-area" class="upload-area" style="display: none;">
+                <div class="upload-dropzone" id="upload-dropzone">
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="17 8 12 3 7 8"></polyline>
+                        <line x1="12" y1="3" x2="12" y2="15"></line>
+                    </svg>
+                    <p>Drag & drop files here or click to select</p>
+                </div>
+                <div id="upload-progress" class="upload-progress"></div>
+            </div>
+
+            <div id="gallery-grid" class="gallery-grid"></div>
+
+            <div id="empty-state" class="empty-state">
+                <img src="icon.svg" alt="Gallery" class="empty-icon">
+                <p>Enter a gallery name to get started</p>
+                <div class="gallery-selector" id="gallery-selector">
+                    <input type="text" id="gallery-input" placeholder="Enter gallery name" value="">
+                    <button id="load-gallery-btn" class="btn-primary">Load</button>
+                </div>
+            </div>
+        </main>
+
+        <div id="lightbox" class="lightbox" style="display: none;">
+            <button class="lightbox-close" id="lightbox-close">&times;</button>
+            <button class="lightbox-nav lightbox-prev" id="lightbox-prev">&#10094;</button>
+            <button class="lightbox-nav lightbox-next" id="lightbox-next">&#10095;</button>
+            <div class="lightbox-content" id="lightbox-content"></div>
+            <div class="lightbox-caption" id="lightbox-caption"></div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
+

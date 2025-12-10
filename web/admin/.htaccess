@@ -1,0 +1,17 @@
+# Deny access to password and username files
+<FilesMatch "^\.password$">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+<FilesMatch "^\.username$">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+# Deny access to all hidden files starting with dot
+<FilesMatch "^\.">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
