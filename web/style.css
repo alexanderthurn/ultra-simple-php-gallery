@@ -528,6 +528,43 @@ button, .btn-primary, .btn-secondary {
     color: var(--text-secondary);
 }
 
+.directory-download {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    color: var(--text-primary);
+    font-weight: 700;
+    cursor: pointer;
+    padding: 0.15rem 0.35rem;
+    border-radius: 6px;
+    transition: background 0.2s ease, color 0.2s ease;
+}
+
+.directory-download:hover {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+}
+
+.directory-download .download-icon svg {
+    width: 16px;
+    height: 16px;
+}
+
+.directory-download-hint {
+    color: var(--text-secondary);
+    font-size: 0.95rem;
+    display: none;
+    margin-left: 0.25rem;
+}
+
+.directory-download:hover + .directory-download-hint,
+.directory-download:focus-visible + .directory-download-hint {
+    display: inline;
+}
+
 .breadcrumb-btn {
     background: none;
     border: none;

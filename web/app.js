@@ -32,6 +32,8 @@ const logoutBtn = document.getElementById('logout-btn');
 const galleryInfo = document.getElementById('gallery-info');
 const galleryTitle = document.getElementById('gallery-title');
 const downloadZipBtn = document.getElementById('download-zip-btn');
+const downloadDirZipBtn = document.getElementById('download-dir-zip-btn');
+const downloadDirZipHint = document.getElementById('download-dir-zip-hint');
 const uploadBtn = document.getElementById('upload-btn');
 const closeUploadBtn = document.getElementById('close-upload-btn');
 const fileInput = document.getElementById('file-input');
@@ -681,6 +683,17 @@ if (downloadZipBtn) {
     });
 }
 
+if (downloadDirZipBtn) {
+    downloadDirZipBtn.addEventListener('click', () => {
+        if (!currentGallery || !currentDir) {
+            return;
+        }
+        const dirParam = currentDir ? `&dir=${encodeURIComponent(currentDir)}` : '';
+        const viewParam = viewerPassword ? `&viewPassword=${encodeURIComponent(viewerPassword)}` : '';
+        window.location.href = `api/index.php?action=download_zip&gallery=${encodeURIComponent(currentGallery)}${dirParam}${viewParam}`;
+    });
+}
+
 // Upload functionality
 if (uploadBtn) {
     uploadBtn.addEventListener('click', () => {
@@ -1236,6 +1249,13 @@ function updateBreadcrumb(hasDirectories) {
     
     // Only show breadcrumbs when inside a subdirectory
     const shouldShow = !!currentDir;
+    if (downloadDirZipBtn) {
+        downloadDirZipBtn.style.display = shouldShow ? 'inline-flex' : 'none';
+    }
+    if (downloadDirZipHint) {
+        // Allow CSS hover rules to control visibility when present
+        downloadDirZipHint.style.display = shouldShow ? '' : 'none';
+    }
     if (!shouldShow) {
         directoryBreadcrumb.style.display = 'none';
         return;

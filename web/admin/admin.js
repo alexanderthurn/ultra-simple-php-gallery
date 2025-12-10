@@ -629,6 +629,13 @@ function displayGalleries(galleries) {
         const actions = document.createElement('div');
         actions.className = 'gallery-actions';
         
+        const showBtn = document.createElement('button');
+        showBtn.className = 'btn-primary gallery-view-btn';
+        showBtn.textContent = 'Show Gallery';
+        showBtn.onclick = () => {
+            window.open(`../?gallery=${encodeURIComponent(gallery.name)}`, '_blank');
+        };
+        
         const viewPasswordBtn = document.createElement('button');
         viewPasswordBtn.className = 'btn-secondary';
         viewPasswordBtn.textContent = hasViewPassword ? 'Change View Password' : 'Set View Password';
@@ -677,6 +684,7 @@ function displayGalleries(galleries) {
             }
         };
         
+        actions.appendChild(showBtn);
         actions.appendChild(viewPasswordBtn);
         actions.appendChild(editPasswordBtn);
         actions.appendChild(renameBtn);

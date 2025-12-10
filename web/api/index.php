@@ -411,6 +411,7 @@ function handleDelete() {
 function handleDownloadZip() {
     $gallery = isset($_GET['gallery']) ? $_GET['gallery'] : '';
     $viewPassword = isset($_GET['viewPassword']) ? $_GET['viewPassword'] : '';
+    $dirParam = isset($_GET['dir']) ? $_GET['dir'] : '';
     
     if (empty($gallery)) {
         http_response_code(400);
@@ -420,6 +421,8 @@ function handleDownloadZip() {
     }
     
     $galleryPath = getGalleryPath($gallery);
+    $dir = sanitizeRelativePath($dirParam);
+    $targetPath = $dir ? $galleryPath . '/' . $dir : $galleryPath;
     $hasViewPassword = file_exists($galleryPath . '/.viewpassword');
     if ($hasViewPassword && !verifyGalleryViewAccess($gallery, $viewPassword)) {
         http_response_code(401);
@@ -434,6 +437,13 @@ function handleDownloadZip() {
         echo json_encode(['error' => 'Gallery not found']);
         return;
     }
+
+    if (!is_dir($targetPath)) {
+        http_response_code(404);
+        header('Content-Type: application/json');
+        echo json_encode(['error' => 'Directory not found']);
+        return;
+    }
     
     // Check if ZipArchive is available
     if (!class_exists('ZipArchive')) {
@@ -444,7 +454,11 @@ function handleDownloadZip() {
     }
     
     // Create zip file
-    $zipFilename = $gallery . '_' . date('Y-m-d_His') . '.zip';
+    $zipLabel = $gallery;
+    if ($dir) {
+        $zipLabel .= '_' . str_replace(['/', ' '], ['-', '_'], $dir);
+    }
+    $zipFilename = $zipLabel . '_' . date('Y-m-d_His') . '.zip';
     $zipPath = sys_get_temp_dir() . '/' . $zipFilename;
     
     $zip = new ZipArchive();
@@ -456,8 +470,10 @@ function handleDownloadZip() {
     }
     
     // Add files to zip (excluding thumbnails and password files)
+    $basePrefix = $dir ? trim($dir, '/') . '/' : '';
+    $normalizedTarget = rtrim($targetPath, '/');
     $iterator = new RecursiveIteratorIterator(
-        new RecursiveDirectoryIterator($galleryPath, RecursiveDirectoryIterator::SKIP_DOTS),
+        new RecursiveDirectoryIterator($targetPath, RecursiveDirectoryIterator::SKIP_DOTS),
         RecursiveIteratorIterator::SELF_FIRST
     );
     
@@ -479,7 +495,11 @@ function handleDownloadZip() {
             // Only add supported files
             if (isSupportedFile($filename)) {
                 $filePath = $file->getPathname();
-                $relativePath = str_replace($galleryPath . '/', '', $filePath);
+                $relativeWithinTarget = ltrim(str_replace($normalizedTarget . '/', '', $filePath), '/');
+                if ($relativeWithinTarget === '') {
+                    $relativeWithinTarget = $filename;
+                }
+                $relativePath = $basePrefix ? $basePrefix . $relativeWithinTarget : $relativeWithinTarget;
                 $zip->addFile($filePath, $relativePath);
                 $fileCount++;
             }
