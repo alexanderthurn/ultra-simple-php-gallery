@@ -40,6 +40,11 @@ const dataPrivacyCode = document.getElementById('dataprivacy-code');
 const imprintCode = document.getElementById('imprint-code');
 const dataPrivacyToggle = document.getElementById('dataprivacy-toggle');
 const imprintToggle = document.getElementById('imprint-toggle');
+const settingsForm = document.getElementById('settings-form');
+const maxImageWidthInput = document.getElementById('max-image-width');
+const maxImageFileSizeInput = document.getElementById('max-image-file-size');
+const maxFileSizeInput = document.getElementById('max-file-size');
+const settingsStatus = document.getElementById('settings-status');
 
 // Initialize
 window.addEventListener('DOMContentLoaded', () => {
@@ -82,6 +87,7 @@ function setupEventListeners() {
             adminDashboard.style.display = 'block';
             loadGalleries();
             loadPageContent();
+            loadSettings();
         } else {
             showError(data.error || 'Invalid credentials');
         }
@@ -332,6 +338,13 @@ function setupEventListeners() {
     if (imprintToggle && imprintEditor && imprintCode) {
         imprintToggle.addEventListener('click', () => toggleEditor(imprintEditor, imprintCode, imprintToggle));
     }
+
+    if (settingsForm) {
+        settingsForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            await saveSettings();
+        });
+    }
 }
 
 // Check login status
@@ -347,6 +360,7 @@ async function checkLoginStatus() {
                 adminDashboard.style.display = 'block';
                 loadGalleries();
                 loadPageContent();
+                loadSettings();
                 return;
             }
         }
@@ -392,6 +406,53 @@ async function loadPageContent() {
         loadPage('dataprivacy.html', dataPrivacyEditor, dataPrivacyStatus, dataPrivacyCode),
         loadPage('imprint.html', imprintEditor, imprintStatus, imprintCode)
     ]);
+}
+
+async function loadSettings() {
+    if (!settingsStatus) return;
+    setStatus(settingsStatus, 'Loading...');
+    try {
+        const response = await fetch('api.php?action=get_settings');
+        const data = await response.json();
+        if (response.ok && data.success && data.settings) {
+            const { maxImageWidth, maxImageFileSize, maxFileSize } = data.settings;
+            if (maxImageWidthInput) maxImageWidthInput.value = maxImageWidth ?? '';
+            if (maxImageFileSizeInput) maxImageFileSizeInput.value = maxImageFileSize ?? '';
+            if (maxFileSizeInput) maxFileSizeInput.value = maxFileSize ?? '';
+            setStatus(settingsStatus, 'Loaded');
+        } else {
+            setStatus(settingsStatus, data.error || 'Failed to load', true);
+        }
+    } catch (error) {
+        console.error('Load settings error:', error);
+        setStatus(settingsStatus, 'Failed to load', true);
+    }
+}
+
+async function saveSettings() {
+    if (!settingsStatus) return;
+    setStatus(settingsStatus, 'Saving...');
+    try {
+        const formData = new FormData();
+        formData.append('action', 'save_settings');
+        if (maxImageWidthInput) formData.append('max_image_width', maxImageWidthInput.value || '0');
+        if (maxImageFileSizeInput) formData.append('max_image_file_size', maxImageFileSizeInput.value || '0');
+        if (maxFileSizeInput) formData.append('max_file_size', maxFileSizeInput.value || '0');
+
+        const response = await fetch('api.php?action=save_settings', {
+            method: 'POST',
+            body: formData
+        });
+        const data = await response.json();
+        if (response.ok && data.success) {
+            setStatus(settingsStatus, 'Saved');
+        } else {
+            setStatus(settingsStatus, data.error || 'Save failed', true);
+        }
+    } catch (error) {
+        console.error('Save settings error:', error);
+        setStatus(settingsStatus, 'Save failed', true);
+    }
 }
 
 async function loadPage(page, editorEl, statusEl, codeEl) {

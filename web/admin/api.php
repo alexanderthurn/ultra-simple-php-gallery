@@ -54,6 +54,14 @@ switch ($action) {
     case 'save_page':
         handleSavePage();
         break;
+
+    case 'get_settings':
+        handleGetSettings();
+        break;
+
+    case 'save_settings':
+        handleSaveSettings();
+        break;
     
     default:
         http_response_code(400);
@@ -476,5 +484,73 @@ function handleSavePage() {
         http_response_code(500);
         echo json_encode(['error' => 'Failed to save file']);
     }
+}
+
+function getSettingsPath() {
+    return WEB_ROOT . '/api/settings.json';
+}
+
+function getDefaultSettings() {
+    return [
+        'maxImageWidth' => 1080,
+        'maxImageFileSize' => 5242880,
+        'maxFileSize' => 10485760
+    ];
+}
+
+function readSettingsFile() {
+    $defaults = getDefaultSettings();
+    $path = getSettingsPath();
+
+    if (!file_exists($path)) {
+        return $defaults;
+    }
+
+    $content = file_get_contents($path);
+    $decoded = json_decode($content, true);
+
+    if (!is_array($decoded)) {
+        return $defaults;
+    }
+
+    // Only keep known keys and merge with defaults
+    return array_merge(
+        $defaults,
+        array_intersect_key($decoded, $defaults)
+    );
+}
+
+function handleGetSettings() {
+    requireAdmin();
+
+    $settings = readSettingsFile();
+    echo json_encode(['success' => true, 'settings' => $settings]);
+}
+
+function handleSaveSettings() {
+    requireAdmin();
+
+    $defaults = getDefaultSettings();
+
+    $maxImageWidth = isset($_POST['max_image_width']) ? (int) $_POST['max_image_width'] : $defaults['maxImageWidth'];
+    $maxImageFileSize = isset($_POST['max_image_file_size']) ? (int) $_POST['max_image_file_size'] : $defaults['maxImageFileSize'];
+    $maxFileSize = isset($_POST['max_file_size']) ? (int) $_POST['max_file_size'] : $defaults['maxFileSize'];
+
+    $settings = [
+        'maxImageWidth' => max(0, $maxImageWidth),
+        'maxImageFileSize' => max(0, $maxImageFileSize),
+        'maxFileSize' => max(0, $maxFileSize)
+    ];
+
+    $path = getSettingsPath();
+    $encoded = json_encode($settings, JSON_PRETTY_PRINT);
+
+    if ($encoded === false || file_put_contents($path, $encoded) === false) {
+        http_response_code(500);
+        echo json_encode(['error' => 'Failed to save settings']);
+        return;
+    }
+
+    echo json_encode(['success' => true, 'settings' => $settings]);
 }
 

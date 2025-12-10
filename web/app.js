@@ -24,6 +24,7 @@ const headerActions = document.getElementById('header-actions');
 const headerRight = document.getElementById('header-right');
 const loginToggle = document.getElementById('login-toggle');
 const loginWrapper = document.getElementById('login-wrapper');
+const headerLoginForm = document.getElementById('login-wrapper');
 const loggedInWrapper = document.getElementById('logged-in-wrapper');
 const headerPasswordInput = document.getElementById('header-password-input');
 const loginBtn = document.getElementById('login-btn');
@@ -84,10 +85,11 @@ window.addEventListener('DOMContentLoaded', () => {
         });
     }
     
-    // Handle login button
-    if (loginBtn) {
-        loginBtn.addEventListener('click', () => {
-            const password = headerPasswordInput.value.trim();
+    // Handle login submit
+    if (headerLoginForm) {
+        headerLoginForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const password = headerPasswordInput ? headerPasswordInput.value.trim() : '';
             if (password) {
                 verifyPassword(password);
             }
@@ -106,18 +108,6 @@ window.addEventListener('DOMContentLoaded', () => {
         loginToggle.addEventListener('click', () => {
             const isOpen = loginWrapper.classList.toggle('is-open');
             loginToggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
-        });
-    }
-    
-    // Handle header password input Enter key
-    if (headerPasswordInput) {
-        headerPasswordInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                const password = headerPasswordInput.value.trim();
-                if (password) {
-                    verifyPassword(password);
-                }
-            }
         });
     }
     
@@ -191,6 +181,9 @@ async function verifyPassword(password) {
                 sessionStorage.removeItem(`gallery_password_${currentGallery}`);
                 // stay in view-only mode
                 isLoggedIn = false;
+                if (uploadBtn) uploadBtn.style.display = 'none';
+                if (uploadArea) uploadArea.style.display = 'none';
+                if (closeUploadBtn) closeUploadBtn.style.display = 'none';
             }
         } else {
             galleryPassword = '';
@@ -249,6 +242,7 @@ function updateLoginUI() {
     
     const isViewProtected = galleryHasViewPassword;
     const isEditProtected = galleryHasEditPassword;
+    const hasAnyProtection = isViewProtected || isEditProtected;
     
     // Handle view access first
     if (isViewProtected && !hasViewAccess) {
@@ -277,7 +271,7 @@ function updateLoginUI() {
     }
     
     // Fully open gallery: no logout, no login UI
-    if (!isViewProtected && !isEditProtected) {
+    if (!hasAnyProtection) {
         if (loginWrapper) loginWrapper.style.display = 'none';
         if (loginToggle) loginToggle.style.display = 'none';
         if (loggedInWrapper) loggedInWrapper.style.display = 'none';
@@ -302,11 +296,22 @@ function updateLoginUI() {
     if (loggedInWrapper) {
         const modeText = isLoggedIn || !isEditProtected ? 'Editor' : 'Viewer';
         // Decide visibility: show logout only if protection exists
-        const shouldShowLogout = isViewProtected || isEditProtected;
-        loggedInWrapper.style.display = shouldShowLogout ? 'flex' : 'none';
-        if (logoutBtn) {
-            logoutBtn.textContent = modeText === 'Editor' ? 'Logout Editor' : 'Logout Viewer';
-            logoutBtn.style.display = shouldShowLogout ? 'inline-flex' : 'none';
+        const shouldShowLogout = isLoggedIn || (isViewProtected && hasViewAccess);
+        if (shouldShowLogout) {
+            loggedInWrapper.style.display = 'flex';
+            if (logoutBtn) {
+                logoutBtn.textContent = 'Logout';
+                logoutBtn.setAttribute('data-mode', modeText.toLowerCase());
+                logoutBtn.style.display = 'inline-flex';
+            }
+            if (loginWrapper) loginWrapper.style.display = 'none';
+        } else {
+            loggedInWrapper.style.display = 'none';
+            if (logoutBtn) logoutBtn.style.display = 'none';
+            if (isEditProtected && hasViewAccess) {
+                // edit-protected but not logged-in: show login form
+                if (loginWrapper) loginWrapper.style.display = 'flex';
+            }
         }
     }
     
@@ -314,6 +319,12 @@ function updateLoginUI() {
     if (uploadBtn) {
         const canUpload = hasViewAccess && (!isEditProtected || isLoggedIn);
         uploadBtn.style.display = canUpload ? 'block' : 'none';
+    }
+    if (uploadArea && !isLoggedIn) {
+        uploadArea.style.display = 'none';
+    }
+    if (closeUploadBtn && !isLoggedIn) {
+        closeUploadBtn.style.display = 'none';
     }
     
     // Update delete buttons visibility
@@ -352,6 +363,10 @@ async function loadGallery(galleryName, dir = '', view = currentView) {
     currentDir = normalizeRelativePath(dir || '');
     currentView = view === 'flat' ? 'flat' : 'dir';
     viewerPassword = sessionStorage.getItem(`gallery_view_password_${galleryName}`) || '';
+    // reset upload UI early; will re-show if allowed
+    if (uploadBtn) uploadBtn.style.display = 'none';
+    if (uploadArea) uploadArea.style.display = 'none';
+    if (closeUploadBtn) closeUploadBtn.style.display = 'none';
     if (galleryTitle) {
         galleryTitle.textContent = galleryName;
         galleryTitle.style.display = 'block';
@@ -437,7 +452,6 @@ async function loadGallery(galleryName, dir = '', view = currentView) {
             // Reset upload area visibility on gallery load
             if (uploadArea) uploadArea.style.display = 'none';
             if (closeUploadBtn) closeUploadBtn.style.display = 'none';
-            if (uploadBtn) uploadBtn.style.display = 'block';
         } else {
             showError(data.error || 'Failed to load gallery');
             if (galleryGrid) galleryGrid.innerHTML = '';

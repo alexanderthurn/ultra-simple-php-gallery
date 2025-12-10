@@ -48,6 +48,33 @@
                     <div id="galleries-list" class="galleries-list"></div>
                 </section>
 
+                <section class="admin-section">
+                    <h2>Settings</h2>
+                    <form id="settings-form" class="settings-form">
+                        <div class="settings-grid">
+                            <div class="form-field">
+                                <label for="max-image-width">Max image width (px)</label>
+                                <input type="number" id="max-image-width" min="0" placeholder="1080">
+                                <small class="field-hint">0 means unlimited; only stored for now.</small>
+                            </div>
+                            <div class="form-field">
+                                <label for="max-image-file-size">Max image file size (bytes)</label>
+                                <input type="number" id="max-image-file-size" min="0" step="1024" placeholder="5242880">
+                                <small class="field-hint">0 means unlimited; only stored for now.</small>
+                            </div>
+                            <div class="form-field">
+                                <label for="max-file-size">Max file size (bytes)</label>
+                                <input type="number" id="max-file-size" min="0" step="1024" placeholder="10485760">
+                                <small class="field-hint">0 means unlimited; only stored for now.</small>
+                            </div>
+                        </div>
+                        <div class="settings-actions">
+                            <span id="settings-status" class="editor-status"></span>
+                            <button type="submit" class="btn-primary">Save Settings</button>
+                        </div>
+                    </form>
+                </section>
+
                 <section class="content-section">
                     <h2>Legal Pages</h2>
                     <div class="editor-grid">
