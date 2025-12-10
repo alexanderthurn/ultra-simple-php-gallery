@@ -24,12 +24,10 @@ The most simple photo gallery! Just upload it to your Apache/PHP server. It focu
 
 ## Screenshots
 
-<p>
-  <img src="misc/screenshots/1.png" alt="Screenshot 1" width="50%" />
-  <img src="misc/screenshots/2.jpg" alt="Screenshot 2" width="50%" />
-  <img src="misc/screenshots/3.jpg" alt="Screenshot 3" width="50%" />
-  <img src="misc/screenshots/4.jpg" alt="Screenshot 4" width="50%" />
-</p>
+![Screenshot 1](misc/screenshots/1.jpg)
+![Screenshot 2](misc/screenshots/2.jpg)
+![Screenshot 3](misc/screenshots/3.jpg)
+![Screenshot 4](misc/screenshots/4.jpg)
 
 ## Requirements
 
