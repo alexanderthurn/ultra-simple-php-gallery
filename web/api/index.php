@@ -38,6 +38,7 @@ switch ($action) {
 
 function handleList() {
     $gallery = $_GET['gallery'] ?? '';
+    $dir = $_GET['dir'] ?? '';
     
     if (empty($gallery)) {
         http_response_code(400);
@@ -53,13 +54,25 @@ function handleList() {
         return;
     }
     
-    $files = scanGallery($gallery);
+    $dir = sanitizeRelativePath($dir);
+    
+    // Validate directory path
+    $targetPath = $dir ? $galleryPath . '/' . $dir : $galleryPath;
+    if (!is_dir($targetPath)) {
+        http_response_code(404);
+        echo json_encode(['error' => 'Directory not found']);
+        return;
+    }
+    
+    $listing = listGalleryDirectory($gallery, $dir);
     $hasPassword = file_exists($galleryPath . '/.password');
     
     echo json_encode([
         'success' => true,
         'gallery' => $gallery,
-        'files' => $files,
+        'dir' => $dir,
+        'directories' => $listing['dirs'],
+        'files' => $listing['files'],
         'hasPassword' => $hasPassword
     ]);
 }

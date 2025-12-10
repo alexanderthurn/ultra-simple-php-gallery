@@ -150,8 +150,9 @@ function sanitizeGalleryName($name) {
  * Sanitize an individual path segment (file or folder name)
  */
 function sanitizePathSegment($segment) {
-    // Replace unsupported chars with underscore, keep dots for extensions
-    $clean = preg_replace('/[^a-zA-Z0-9._-]/', '_', $segment);
+    // Allow spaces, dots, underscores, hyphens; replace everything else with underscore
+    $clean = preg_replace('/[^a-zA-Z0-9._\\- ]/', '_', $segment);
+    $clean = trim($clean);
     // Avoid empty segments
     return $clean === '' ? '_' : $clean;
 }
@@ -176,6 +177,61 @@ function sanitizeRelativePath($path) {
     }
     
     return implode('/', $safeParts);
+}
+
+/**
+ * List immediate directories and supported files within a gallery path
+ */
+function listGalleryDirectory($gallery, $dir = '') {
+    $galleryPath = getGalleryPath($gallery);
+    $scanPath = $dir ? $galleryPath . '/' . $dir : $galleryPath;
+    
+    if (!is_dir($scanPath)) {
+        return ['dirs' => [], 'files' => []];
+    }
+    
+    $dirs = [];
+    $files = [];
+    
+    $iterator = new DirectoryIterator($scanPath);
+    foreach ($iterator as $entry) {
+        if ($entry->isDot()) {
+            continue;
+        }
+        
+        $name = $entry->getFilename();
+        
+        // Skip hidden and password files
+        if ($name[0] === '.' || $name === '.password') {
+            continue;
+        }
+        
+        $relative = $dir ? $dir . '/' . $name : $name;
+        
+        if ($entry->isDir()) {
+            $dirs[] = [
+                'name' => $name,
+                'path' => $relative,
+            ];
+            continue;
+        }
+        
+        // Skip thumbnails
+        if (strpos($name, '_thumb.') !== false) {
+            continue;
+        }
+        
+        if (!isSupportedFile($name)) {
+            continue;
+        }
+        
+        $fileEntry = buildFileResponse($name, $relative, $entry->getPathname());
+        if ($fileEntry) {
+            $files[] = $fileEntry;
+        }
+    }
+    
+    return ['dirs' => $dirs, 'files' => $files];
 }
 
 /**

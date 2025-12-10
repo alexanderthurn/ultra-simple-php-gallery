@@ -2,6 +2,7 @@
 let currentGallery = '';
 let currentFiles = [];
 let currentIndex = 0;
+let currentDir = '';
 let galleryPassword = '';
 let galleryHasPassword = false;
 let isLoggedIn = false;
@@ -29,6 +30,8 @@ const fileInput = document.getElementById('file-input');
 const uploadArea = document.getElementById('upload-area');
 const uploadDropzone = document.getElementById('upload-dropzone');
 const uploadProgress = document.getElementById('upload-progress');
+const directoryList = document.getElementById('directory-list');
+const directoryBreadcrumb = document.getElementById('directory-breadcrumb');
 const galleryGrid = document.getElementById('gallery-grid');
 const emptyState = document.getElementById('empty-state');
 const passwordModal = document.getElementById('password-modal');
@@ -50,6 +53,7 @@ window.addEventListener('DOMContentLoaded', () => {
     // Check URL parameter
     const urlParams = new URLSearchParams(window.location.search);
     const galleryParam = urlParams.get('gallery');
+    const dirParam = urlParams.get('dir');
     
     // Setup event listeners
     if (loadGalleryBtn) {
@@ -118,7 +122,7 @@ window.addEventListener('DOMContentLoaded', () => {
     
     if (galleryParam) {
         if (galleryInput) galleryInput.value = galleryParam;
-        loadGallery(galleryParam);
+        loadGallery(galleryParam, dirParam || '');
     } else {
         // No gallery loaded - show selector in empty state
         if (gallerySelector) gallerySelector.style.display = 'flex';
@@ -244,8 +248,9 @@ function updateDeleteButtonsVisibility() {
 }
 
 // Load gallery
-async function loadGallery(galleryName) {
+async function loadGallery(galleryName, dir = '') {
     currentGallery = galleryName;
+    currentDir = normalizeRelativePath(dir || '');
     if (galleryTitle) {
         galleryTitle.textContent = galleryName;
         galleryTitle.style.display = 'block';
@@ -259,11 +264,13 @@ async function loadGallery(galleryName) {
     if (gallerySelector) gallerySelector.style.display = 'none';
     
     try {
-        const response = await fetch(`api/index.php?action=list&gallery=${encodeURIComponent(galleryName)}`);
+        const dirParam = currentDir ? `&dir=${encodeURIComponent(currentDir)}` : '';
+        const response = await fetch(`api/index.php?action=list&gallery=${encodeURIComponent(galleryName)}${dirParam}`);
         const data = await response.json();
         
         if (data.success) {
             currentFiles = data.files;
+            currentDir = normalizeRelativePath(data.dir || '');
             galleryHasPassword = data.hasPassword || false;
             
             // Handle password based on gallery's password status
@@ -286,7 +293,9 @@ async function loadGallery(galleryName) {
                 }
             }
             
+            displayDirectories(data.directories || []);
             displayGallery(data.files);
+            updateBreadcrumb();
             updateLoginUI();
 
             if (galleryInfo) galleryInfo.style.display = 'flex';
@@ -328,7 +337,8 @@ async function loadGallery(galleryName) {
 
 // Display gallery
 function displayGallery(files) {
-    if (files.length === 0) {
+    const hasDirectories = directoryList && directoryList.children.length > 0 && directoryList.style.display !== 'none';
+    if (files.length === 0 && !hasDirectories) {
         galleryGrid.innerHTML = '<div class="empty-state"><p>This gallery is empty</p></div>';
         return;
     }
@@ -449,6 +459,45 @@ function createFileViewer(file) {
     wrapper.appendChild(actions);
     
     return wrapper;
+}
+
+function displayDirectories(directories) {
+    if (!directoryList) return;
+    
+    directoryList.innerHTML = '';
+    
+    if (!directories || directories.length === 0) {
+        directoryList.style.display = 'none';
+        return;
+    }
+    
+    directoryList.style.display = 'grid';
+    
+    directories.forEach((dir) => {
+        const card = document.createElement('div');
+        card.className = 'directory-card';
+        
+        const icon = document.createElement('div');
+        icon.className = 'directory-icon';
+        icon.textContent = '📁';
+        
+        const name = document.createElement('div');
+        name.className = 'directory-name';
+        name.textContent = dir.name;
+
+        card.appendChild(icon);
+        card.appendChild(name);
+        
+        card.onclick = () => {
+            loadGallery(currentGallery, dir.path);
+            const params = new URLSearchParams(window.location.search);
+            params.set('gallery', currentGallery);
+            params.set('dir', dir.path);
+            window.history.pushState({}, '', `?${params.toString()}`);
+        };
+        
+        directoryList.appendChild(card);
+    });
 }
 
 // Download ZIP functionality
@@ -634,7 +683,12 @@ async function uploadFiles(files) {
 }
 
 async function uploadFile(file, relativePath) {
-    const safePath = normalizeRelativePath(relativePath || file.webkitRelativePath || file.name);
+    const incomingPath = normalizeRelativePath(relativePath || file.webkitRelativePath || file.name);
+    const baseDir = currentDir ? normalizeRelativePath(currentDir) : '';
+    let safePath = incomingPath;
+    if (baseDir && !incomingPath.startsWith(baseDir + '/')) {
+        safePath = normalizeRelativePath(`${baseDir}/${incomingPath}`);
+    }
     
     const item = document.createElement('div');
     item.className = 'upload-item';
@@ -919,6 +973,59 @@ lightbox.addEventListener('click', (e) => {
 // Utility
 function getFileUrl(filePath) {
     return `api/file.php?gallery=${encodeURIComponent(currentGallery)}&file=${encodeURIComponent(filePath)}`;
+}
+
+function updateBreadcrumb() {
+    if (!directoryBreadcrumb) return;
+    
+    directoryBreadcrumb.innerHTML = '';
+    const crumbs = [];
+    
+    const rootCrumb = document.createElement('button');
+    rootCrumb.type = 'button';
+    rootCrumb.className = 'breadcrumb-btn';
+    rootCrumb.textContent = currentGallery || 'Home';
+    rootCrumb.onclick = () => {
+        loadGallery(currentGallery, '');
+        const params = new URLSearchParams(window.location.search);
+        params.set('gallery', currentGallery);
+        params.delete('dir');
+        window.history.pushState({}, '', `?${params.toString()}`);
+    };
+    crumbs.push(rootCrumb);
+    
+    if (currentDir) {
+        const parts = currentDir.split('/').filter(Boolean);
+        let accum = '';
+        parts.forEach((part) => {
+            accum = accum ? `${accum}/${part}` : part;
+            const path = accum; // capture per-crumb
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'breadcrumb-btn';
+            btn.textContent = part;
+            btn.onclick = () => {
+                loadGallery(currentGallery, path);
+                const params = new URLSearchParams(window.location.search);
+                params.set('gallery', currentGallery);
+                params.set('dir', path);
+                window.history.pushState({}, '', `?${params.toString()}`);
+            };
+            crumbs.push(btn);
+        });
+    }
+    
+    crumbs.forEach((c, idx) => {
+        directoryBreadcrumb.appendChild(c);
+        if (idx < crumbs.length - 1) {
+            const sep = document.createElement('span');
+            sep.className = 'breadcrumb-sep';
+            sep.textContent = '/';
+            directoryBreadcrumb.appendChild(sep);
+        }
+    });
+    
+    directoryBreadcrumb.style.display = 'flex';
 }
 
 function normalizeRelativePath(path) {
