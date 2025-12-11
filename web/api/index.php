@@ -26,6 +26,10 @@ switch ($action) {
         handleDelete();
         break;
     
+    case 'delete_dir':
+        handleDeleteDir();
+        break;
+    
     case 'download_zip':
         handleDownloadZip();
         break;
@@ -101,6 +105,7 @@ function handleUpload() {
     $gallery = isset($_GET['gallery']) ? $_GET['gallery'] : '';
     $password = isset($_GET['password']) ? $_GET['password'] : '';
     $viewPassword = isset($_GET['viewPassword']) ? $_GET['viewPassword'] : '';
+    $conflictMode = isset($_POST['conflict']) ? $_POST['conflict'] : 'add'; // add | replace | skip | ask
     $settings = getSettings();
     $maxImageWidth = (int) (isset($settings['maxImageWidth']) ? $settings['maxImageWidth'] : 0);
     $maxImageFileSize = (int) (isset($settings['maxImageFileSize']) ? $settings['maxImageFileSize'] : 0);
@@ -189,18 +194,60 @@ function handleUpload() {
     
     // Initial target path
     $targetPath = $targetDir . '/' . $baseName;
+    $incomingTmp = isset($file['tmp_name']) ? $file['tmp_name'] : null;
     
     // Handle overwrite (keep in same dir)
     if (file_exists($targetPath)) {
-        $nameOnly = isset($pathInfo['filename']) ? $pathInfo['filename'] : pathinfo($baseName, PATHINFO_FILENAME);
-        $ext = $extension ? '.' . $extension : (pathinfo($baseName, PATHINFO_EXTENSION) ? '.' . pathinfo($baseName, PATHINFO_EXTENSION) : '');
-        $counter = 1;
-        do {
-            $candidate = $nameOnly . '_' . $counter . $ext;
-            $targetPath = $targetDir . '/' . $candidate;
-            $relativePath = ($dirPart ? $dirPart . '/' : '') . $candidate;
-            $counter++;
-        } while (file_exists($targetPath));
+        if ($conflictMode === 'skip') {
+            if ($incomingTmp && file_exists($incomingTmp)) {
+                @unlink($incomingTmp);
+            }
+            echo json_encode([
+                'success' => true,
+                'skipped' => true,
+                'message' => 'Skipped existing file'
+            ]);
+            return;
+        }
+        
+        if ($conflictMode === 'replace') {
+            // delete existing file and thumb if any
+            if (is_file($targetPath)) {
+                @unlink($targetPath);
+            }
+            if (isImageFile($baseName)) {
+                $thumbPathExisting = getThumbnailPath($targetPath);
+                if (file_exists($thumbPathExisting)) {
+                    @unlink($thumbPathExisting);
+                }
+            }
+            // keep name as-is
+            $relativePath = ($dirPart ? $dirPart . '/' : '') . $baseName;
+        } elseif ($conflictMode === 'ask') {
+            if ($incomingTmp && file_exists($incomingTmp)) {
+                @unlink($incomingTmp);
+            }
+            http_response_code(409);
+            echo json_encode([
+                'success' => false,
+                'conflict' => true,
+                'message' => 'File already exists',
+                'file' => $relativePath,
+                'options' => ['replace', 'add', 'skip']
+            ]);
+            return;
+        } else {
+            // add (default) - keep existing rename behavior
+            $nameOnly = isset($pathInfo['filename']) ? $pathInfo['filename'] : pathinfo($baseName, PATHINFO_FILENAME);
+            $ext = $extension ? '.' . $extension : (pathinfo($baseName, PATHINFO_EXTENSION) ? '.' . pathinfo($baseName, PATHINFO_EXTENSION) : '');
+            $counter = 1;
+            do {
+                $candidate = $nameOnly . '_' . $counter . $ext;
+                $targetPath = $targetDir . '/' . $candidate;
+                $relativePath = ($dirPart ? $dirPart . '/' : '') . $candidate;
+                $counter++;
+            } while (file_exists($targetPath));
+        }
     } else {
         // Update relativePath with sanitized base name
         $relativePath = ($dirPart ? $dirPart . '/' : '') . $baseName;
@@ -408,6 +455,81 @@ function handleDelete() {
     ]);
 }
 
+function handleDeleteDir() {
+    $gallery = isset($_GET['gallery']) ? $_GET['gallery'] : '';
+    $dirParam = isset($_GET['dir']) ? $_GET['dir'] : '';
+    $password = isset($_GET['password']) ? $_GET['password'] : '';
+    $viewPassword = isset($_GET['viewPassword']) ? $_GET['viewPassword'] : '';
+    
+    if (empty($gallery)) {
+        http_response_code(400);
+        echo json_encode(['error' => 'Gallery name required']);
+        return;
+    }
+    
+    $galleryPath = getGalleryPath($gallery);
+    
+    if (!is_dir($galleryPath)) {
+        http_response_code(404);
+        echo json_encode(['error' => 'Gallery not found']);
+        return;
+    }
+    
+    $hasPassword = file_exists($galleryPath . '/.password');
+    $hasViewPassword = file_exists($galleryPath . '/.viewpassword');
+    
+    if ($hasViewPassword && !verifyGalleryViewAccess($gallery, $viewPassword)) {
+        http_response_code(401);
+        echo json_encode(['error' => 'View password required or invalid']);
+        return;
+    }
+    
+    if ($hasPassword) {
+        if (empty($password)) {
+            http_response_code(401);
+            echo json_encode(['error' => 'Password required']);
+            return;
+        }
+        
+        if (!verifyGalleryPassword($gallery, $password)) {
+            http_response_code(401);
+            echo json_encode(['error' => 'Invalid password']);
+            return;
+        }
+    }
+    
+    $dir = sanitizeRelativePath($dirParam);
+    if ($dir === '') {
+        http_response_code(400);
+        echo json_encode(['error' => 'Invalid directory path']);
+        return;
+    }
+    
+    $targetPath = $galleryPath . '/' . $dir;
+    if (!is_dir($targetPath)) {
+        http_response_code(404);
+        echo json_encode(['error' => 'Directory not found']);
+        return;
+    }
+    
+    if (!validateFilePath($dir, $galleryPath)) {
+        http_response_code(400);
+        echo json_encode(['error' => 'Invalid directory path']);
+        return;
+    }
+    
+    if (!deleteDirectoryRecursive($targetPath)) {
+        http_response_code(500);
+        echo json_encode(['error' => 'Failed to delete directory']);
+        return;
+    }
+    
+    echo json_encode([
+        'success' => true,
+        'message' => 'Directory deleted successfully'
+    ]);
+}
+
 function handleDownloadZip() {
     $gallery = isset($_GET['gallery']) ? $_GET['gallery'] : '';
     $viewPassword = isset($_GET['viewPassword']) ? $_GET['viewPassword'] : '';
@@ -596,5 +718,26 @@ function handleAuth() {
         'hasEditPassword' => $hasEditPassword,
         'hasViewPassword' => $hasViewPassword
     ]);
+}
+
+function deleteDirectoryRecursive($path) {
+    if (!is_dir($path)) {
+        return false;
+    }
+    
+    $iterator = new RecursiveIteratorIterator(
+        new RecursiveDirectoryIterator($path, RecursiveDirectoryIterator::SKIP_DOTS),
+        RecursiveIteratorIterator::CHILD_FIRST
+    );
+    
+    foreach ($iterator as $item) {
+        if ($item->isDir()) {
+            rmdir($item->getRealPath());
+        } else {
+            unlink($item->getRealPath());
+        }
+    }
+    
+    return rmdir($path);
 }
 

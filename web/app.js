@@ -123,6 +123,7 @@ window.addEventListener('DOMContentLoaded', () => {
             if (closeUploadBtn) closeUploadBtn.style.display = 'none';
             if (uploadBtn) uploadBtn.style.display = 'block';
         if (uploadArea) uploadArea.classList.remove('keep-open', 'is-uploading');
+        if (uploadDropzone) uploadDropzone.style.display = 'block';
         });
     }
     
@@ -509,7 +510,11 @@ function displayGallery(files, hasDirectoriesOverride) {
         ? hasDirectoriesOverride
         : (directoryList && directoryList.children.length > 0 && directoryList.style.display !== 'none');
     if (files.length === 0 && !hasDirectories) {
-        galleryGrid.innerHTML = '<div class="empty-state"><p>This gallery is empty</p></div>';
+        const canUpload = userCanUpload();
+        const msg = canUpload
+            ? 'No photos yet. Drag your images here or click Upload.'
+            : 'This gallery is empty';
+        galleryGrid.innerHTML = `<div class="empty-state"><p>${msg}</p></div>`;
         return;
     }
     
@@ -658,6 +663,16 @@ function displayDirectories(directories) {
 
         card.appendChild(icon);
         card.appendChild(name);
+
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'delete-btn';
+        deleteBtn.title = `Delete folder ${dir.name}`;
+        deleteBtn.innerHTML = '×';
+        deleteBtn.onclick = (e) => {
+            e.stopPropagation();
+            deleteDirectory(dir.path);
+        };
+        card.appendChild(deleteBtn);
         
         card.onclick = () => {
             loadGallery(currentGallery, dir.path, currentView);
@@ -725,6 +740,7 @@ if (uploadBtn) {
             if (uploadBtn) uploadBtn.style.display = 'none';
             // Scroll to upload area
             uploadArea.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            if (uploadDropzone) uploadDropzone.style.display = 'block';
         }
     });
 }
@@ -770,6 +786,15 @@ function openUploadAreaForDrag() {
     if (closeUploadBtn) closeUploadBtn.style.display = 'block';
     if (uploadBtn) uploadBtn.style.display = 'none';
     uploadArea.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    if (uploadDropzone) uploadDropzone.style.display = 'block';
+}
+
+let lastUploadPermissionNotice = 0;
+function showUploadPermissionNotice() {
+    const now = Date.now();
+    if (now - lastUploadPermissionNotice < 3000) return; // throttle to avoid spam
+    lastUploadPermissionNotice = now;
+    alert('You need to login to upload files to this gallery.');
 }
 
 function updateViewToggleLabel() {
@@ -850,7 +875,10 @@ document.addEventListener('dragover', (e) => {
 document.addEventListener('drop', (e) => {
     if (!e.dataTransfer) return;
     e.preventDefault();
-    if (!currentGallery || !userCanUpload()) return;
+    if (!currentGallery || !userCanUpload()) {
+        showUploadPermissionNotice();
+        return;
+    }
     if (uploadDropzone && (uploadDropzone === e.target || uploadDropzone.contains(e.target))) return;
     openUploadAreaForDrag();
     if (uploadDropzone) uploadDropzone.style.borderColor = 'var(--border)';
@@ -997,13 +1025,23 @@ async function uploadFiles(files) {
     if (closeUploadBtn) closeUploadBtn.style.display = 'block';
     if (uploadBtn) uploadBtn.style.display = 'none';
     if (uploadProgress) uploadProgress.innerHTML = '';
+    if (uploadDropzone) uploadDropzone.style.display = 'none'; // hide dropzone after starting upload
     
     const uploadResults = [];
+    // per-session conflict handling
+    let conflictChoice = null; // 'replace' | 'add' | 'skip'
+    let conflictApplyAll = false;
     
     for (const entry of files) {
         const file = entry.file ? entry.file : entry;
         const relativePath = normalizeRelativePath(entry.path || file.webkitRelativePath || file.name);
-        const result = await uploadFile(file, relativePath);
+        const result = await uploadFile(file, relativePath, () => ({
+            choice: conflictChoice,
+            applyAll: conflictApplyAll
+        }), (decision) => {
+            conflictChoice = decision.choice;
+            conflictApplyAll = decision.applyAll;
+        });
         uploadResults.push(result);
     }
     
@@ -1025,7 +1063,12 @@ async function uploadFiles(files) {
     }
 }
 
-async function uploadFile(file, relativePath) {
+async function uploadFile(
+    file,
+    relativePath,
+    getConflictState = () => ({ choice: null, applyAll: false }),
+    setConflictState = () => {}
+) {
     const incomingPath = normalizeRelativePath(relativePath || file.webkitRelativePath || file.name);
     const baseDir = currentDir ? normalizeRelativePath(currentDir) : '';
     let safePath = incomingPath;
@@ -1051,6 +1094,28 @@ async function uploadFile(file, relativePath) {
     item.appendChild(progressBar);
     if (uploadProgress) uploadProgress.appendChild(item);
     
+    const resolveConflict = () => {
+        const existingChoice = getConflictState()?.choice || '';
+        const input = prompt(
+            `File "${file.name}" already exists. Choose an action:\n- replace (r)\n- add as new (a)\n- skip (s)`,
+            existingChoice || 'add'
+        );
+        if (!input) {
+            return { choice: 'skip', applyAll: false };
+        }
+        const normalized = input.toLowerCase().trim();
+        let choice = 'add';
+        if (normalized === 'r' || normalized === 'replace') {
+            choice = 'replace';
+        } else if (normalized === 's' || normalized === 'skip') {
+            choice = 'skip';
+        } else {
+            choice = 'add';
+        }
+        const applyAll = confirm('Apply this choice to all remaining conflicts?');
+        return { choice, applyAll };
+    };
+    
     try {
         let fileToUpload = file;
         
@@ -1059,11 +1124,13 @@ async function uploadFile(file, relativePath) {
             fileToUpload = await compressImage(file);
         }
         
-        const formData = new FormData();
-        formData.append('file', fileToUpload);
-        formData.append('path', safePath);
-        
-        return await new Promise((resolve) => {
+        const sendUpload = (conflictMode) => {
+            const formData = new FormData();
+            formData.append('file', fileToUpload);
+            formData.append('path', safePath);
+            formData.append('conflict', conflictMode);
+            
+            return new Promise((resolve) => {
             const xhr = new XMLHttpRequest();
             
             xhr.upload.addEventListener('progress', (e) => {
@@ -1074,17 +1141,31 @@ async function uploadFile(file, relativePath) {
             });
             
             xhr.addEventListener('load', () => {
+                let response = {};
+                try {
+                    response = JSON.parse(xhr.responseText || '{}');
+                } catch (err) {
+                    // ignore parse error; will fallback to generic message
+                }
+                
+                if (response.conflict) {
+                    resolve({ success: false, conflict: true, response });
+                    return;
+                }
+                
                 if (xhr.status === 200) {
+                    if (response.skipped) {
+                        if (name) {
+                            name.textContent = `${file.name} - Skipped (exists)`;
+                            name.style.color = 'var(--text-secondary)';
+                        }
+                        resolve({ success: true, skipped: true });
+                        return;
+                    }
                     if (progressFill) progressFill.style.width = '100%';
                     if (item) item.style.opacity = '0.5';
                     resolve({ success: true });
                 } else {
-                    let response = {};
-                    try {
-                        response = JSON.parse(xhr.responseText || '{}');
-                    } catch (err) {
-                        // ignore parse error; will fallback to generic message
-                    }
                     const errorMsg = response.error || 'Upload failed';
                     if (name) {
                         name.textContent = `${file.name} - Error: ${errorMsg}`;
@@ -1117,6 +1198,42 @@ async function uploadFile(file, relativePath) {
             xhr.open('POST', uploadUrl);
             xhr.send(formData);
         });
+        };
+        
+        // Determine conflict mode to use
+        const conflictState = getConflictState();
+        const initialConflictMode = conflictState && conflictState.applyAll && conflictState.choice
+            ? conflictState.choice
+            : 'ask';
+        
+        let attemptMode = initialConflictMode;
+        while (true) {
+            const result = await sendUpload(attemptMode);
+            if (!result.conflict) {
+                return result;
+            }
+            
+            // resolve conflict interactively
+            const decision = resolveConflict();
+            if (!decision) {
+                return { success: false, error: 'Conflict unresolved' };
+            }
+            if (decision.applyAll) {
+                setConflictState({ choice: decision.choice, applyAll: true });
+            } else {
+                setConflictState({ choice: decision.choice, applyAll: false });
+            }
+            
+            if (decision.choice === 'skip') {
+                if (name) {
+                    name.textContent = `${file.name} - Skipped (exists)`;
+                    name.style.color = 'var(--text-secondary)';
+                }
+                return { success: true, skipped: true };
+            }
+            
+            attemptMode = decision.choice === 'replace' ? 'replace' : 'add';
+        }
         
     } catch (error) {
         console.error('Upload error:', error);
@@ -1199,7 +1316,7 @@ async function deleteFile(filePath) {
         const data = await response.json();
         
         if (data.success) {
-            loadGallery(currentGallery);
+            loadGallery(currentGallery, currentDir, currentView);
         } else {
             if (response.status === 401) {
                 // Password invalid, logout
@@ -1212,6 +1329,52 @@ async function deleteFile(filePath) {
     } catch (error) {
         console.error('Delete error:', error);
         alert('Failed to delete file');
+    }
+}
+
+// Delete directory (recursive)
+async function deleteDirectory(dirPath) {
+    if (!isLoggedIn || !dirPath) {
+        return;
+    }
+    
+    if (!confirm('Delete this folder and all its contents?')) {
+        return;
+    }
+    
+    try {
+        let deleteUrl = `api/index.php?action=delete_dir&gallery=${encodeURIComponent(currentGallery)}&dir=${encodeURIComponent(dirPath)}`;
+        if (galleryHasViewPassword && viewerPassword) {
+            deleteUrl += `&viewPassword=${encodeURIComponent(viewerPassword)}`;
+        }
+        if (galleryHasPassword && galleryPassword) {
+            deleteUrl += `&password=${encodeURIComponent(galleryPassword)}`;
+        }
+        const response = await fetch(deleteUrl, {
+            method: 'GET'
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            const isDeletingCurrentDir = normalizeRelativePath(dirPath) === normalizeRelativePath(currentDir);
+            if (isDeletingCurrentDir) {
+                const parent = currentDir.split('/').slice(0, -1).join('/');
+                loadGallery(currentGallery, parent, currentView);
+            } else {
+                loadGallery(currentGallery, currentDir, currentView);
+            }
+        } else {
+            if (response.status === 401) {
+                logout();
+                alert('Password invalid. Please login again.');
+            } else {
+                alert('Error: ' + (data.error || 'Failed to delete folder'));
+            }
+        }
+    } catch (error) {
+        console.error('Delete directory error:', error);
+        alert('Failed to delete folder');
     }
 }
 

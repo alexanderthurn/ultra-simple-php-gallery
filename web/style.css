@@ -373,6 +373,17 @@ button, .btn-primary, .btn-secondary {
     margin-bottom: 2rem;
 }
 
+.upload-header {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 0.35rem;
+}
+
+.upload-close-btn {
+    padding: 0.5rem 0.75rem;
+    min-width: 0;
+}
+
 .upload-dropzone {
     border: 2px dashed var(--border);
     border-radius: 12px;
@@ -619,12 +630,17 @@ button, .btn-primary, .btn-secondary {
     transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
     box-shadow: 0 20px 50px var(--shadow);
     aspect-ratio: 2 / 1; /* half the height of square thumbnails */
+    position: relative;
 }
 
 .directory-card:hover {
     transform: translateY(-3px);
     border-color: var(--accent);
     box-shadow: 0 26px 60px var(--shadow);
+}
+
+.directory-card:hover .delete-btn {
+    opacity: 1;
 }
 
 .directory-icon {
