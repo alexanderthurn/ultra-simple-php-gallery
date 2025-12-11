@@ -498,6 +498,9 @@ function handleSaveSettings() {
     $allowPublic = isset($_POST['allow_public_gallery_creation'])
         ? filter_var($_POST['allow_public_gallery_creation'], FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE) ?? false
         : $defaults['allowPublicGalleryCreation'];
+    $publicAllowExtend = isset($_POST['public_allow_extend'])
+        ? filter_var($_POST['public_allow_extend'], FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE) ?? false
+        : $defaults['publicAllowExtend'];
     $publicDefaultViewerUploads = isset($_POST['public_default_viewer_uploads_enabled'])
         ? filter_var($_POST['public_default_viewer_uploads_enabled'], FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE) ?? false
         : $defaults['publicDefaultViewerUploadsEnabled'];
@@ -517,6 +520,7 @@ function handleSaveSettings() {
         'maxFileSize' => max(0, $maxFileSize),
         'contactEmail' => $contactEmail,
         'allowPublicGalleryCreation' => $allowPublic ? true : false,
+        'publicAllowExtend' => $publicAllowExtend ? true : false,
         'publicDefaultViewerUploadsEnabled' => $publicDefaultViewerUploads ? true : false,
         'publicDefaultMaxGalleryBytes' => max(0, $publicDefaultMaxBytes),
         'publicDefaultMaxPhotos' => max(0, $publicDefaultMaxPhotos),

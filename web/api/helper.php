@@ -22,6 +22,7 @@ function getDefaultSettings() {
         'contactEmail' => '',
         // Public gallery creation toggle + strict defaults
         'allowPublicGalleryCreation' => false,
+        'publicAllowExtend' => true,
         'publicDefaultViewerUploadsEnabled' => true,
         'publicDefaultMaxGalleryBytes' => 10485760,
         'publicDefaultMaxPhotos' => 100,
@@ -53,6 +54,7 @@ function getSettings() {
 
     // Normalize types
     $merged['allowPublicGalleryCreation'] = !empty($merged['allowPublicGalleryCreation']);
+    $merged['publicAllowExtend'] = !empty($merged['publicAllowExtend']);
     $merged['publicDefaultViewerUploadsEnabled'] = !empty($merged['publicDefaultViewerUploadsEnabled']);
     $merged['defaultViewerUploadsEnabled'] = !empty($merged['defaultViewerUploadsEnabled']);
 

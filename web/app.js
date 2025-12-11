@@ -877,10 +877,20 @@ function showNeedMoreDialog(actionsOverride) {
     if (modalTitle) modalTitle.textContent = 'Need more?';
     needMoreModalDesc.textContent = 'You can contact the admin to get your own custom share name, more data, password protection for viewers, readonly mode and more. If you just want to extend the expiry date, click the button "Extend".';
     needMoreModalActions.innerHTML = '';
+    const allowExtend = currentSettings ? currentSettings.publicAllowExtend !== false : true;
     const btnExtend = document.createElement('button');
     btnExtend.className = 'btn-primary';
     btnExtend.textContent = 'Extend';
-    btnExtend.onclick = () => extendGalleryLifetime();
+    btnExtend.onclick = () => {
+        if (!allowExtend) {
+            alert('Extending this share was disabled by the admin. Please contact them.');
+            return;
+        }
+        extendGalleryLifetime();
+    };
+    if (!allowExtend) {
+        btnExtend.classList.add('btn-disabled');
+    }
     needMoreModalActions.appendChild(btnExtend);
 
     const emailText = contactEmail || 'admin@example.com';
@@ -895,6 +905,10 @@ function showNeedMoreDialog(actionsOverride) {
 
 async function extendGalleryLifetime() {
     if (!currentGallery) return;
+    if (currentSettings && currentSettings.publicAllowExtend === false) {
+        alert('Extending this share was disabled by the admin. Please contact them.');
+        return;
+    }
     try {
         const formData = new FormData();
         formData.append('action', 'extend_gallery');

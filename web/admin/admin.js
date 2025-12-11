@@ -49,6 +49,7 @@ const settingsStatus = document.getElementById('settings-status');
 const maxImageFileSizeMb = document.getElementById('max-image-file-size-mb');
 const maxFileSizeMb = document.getElementById('max-file-size-mb');
 const allowPublicGalleryCreationInput = document.getElementById('allow-public-gallery-creation');
+const publicAllowExtendInput = document.getElementById('public-allow-extend');
 const publicMaxGalleryBytesInput = document.getElementById('public-max-gallery-bytes');
 const publicMaxGalleryBytesMb = document.getElementById('public-max-gallery-bytes-mb');
 const publicMaxPhotosInput = document.getElementById('public-max-photos');
@@ -451,6 +452,7 @@ async function loadSettings() {
                 maxFileSize,
                 contactEmail,
                 allowPublicGalleryCreation,
+                publicAllowExtend,
                 publicDefaultViewerUploadsEnabled,
                 publicDefaultMaxGalleryBytes,
                 publicDefaultMaxPhotos,
@@ -465,6 +467,7 @@ async function loadSettings() {
             if (maxFileSizeInput) maxFileSizeInput.value = maxFileSize ?? '';
             if (contactEmailInput) contactEmailInput.value = contactEmail ?? '';
             if (allowPublicGalleryCreationInput) allowPublicGalleryCreationInput.checked = !!allowPublicGalleryCreation;
+            if (publicAllowExtendInput) publicAllowExtendInput.checked = !!publicAllowExtend;
             if (publicMaxGalleryBytesInput) publicMaxGalleryBytesInput.value = publicDefaultMaxGalleryBytes ?? '';
             if (publicMaxPhotosInput) publicMaxPhotosInput.value = publicDefaultMaxPhotos ?? '';
             if (publicLifetimeDaysInput) publicLifetimeDaysInput.value = publicDefaultLifetimeDays ?? '';
@@ -498,6 +501,7 @@ async function saveSettings() {
         if (maxFileSizeInput) formData.append('max_file_size', maxFileSizeInput.value || '0');
         if (contactEmailInput) formData.append('contact_email', contactEmailInput.value || '');
         if (allowPublicGalleryCreationInput) formData.append('allow_public_gallery_creation', allowPublicGalleryCreationInput.checked ? '1' : '0');
+        if (publicAllowExtendInput) formData.append('public_allow_extend', publicAllowExtendInput.checked ? '1' : '0');
         if (publicMaxGalleryBytesInput) formData.append('public_default_max_gallery_bytes', publicMaxGalleryBytesInput.value || '0');
         if (publicMaxPhotosInput) formData.append('public_default_max_photos', publicMaxPhotosInput.value || '0');
         if (publicLifetimeDaysInput) formData.append('public_default_lifetime_days', publicLifetimeDaysInput.value || '0');

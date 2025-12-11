@@ -99,6 +99,8 @@ function handleList() {
         return;
     }
     
+    $globalSettings = getSettings();
+
     $listing = ($view === 'flat')
         ? ['dirs' => [], 'files' => scanGallery($gallery, $dir)]
         : listGalleryDirectory($gallery, $dir);
@@ -123,7 +125,8 @@ function handleList() {
             'lifetimeDays' => $gallerySettings['lifetimeDays'],
             'createdAt' => $gallerySettings['createdAt'],
             'expiresAt' => isset($gallerySettings['expiresAt']) ? $gallerySettings['expiresAt'] : null,
-            'limitActions' => $gallerySettings['limitActions']
+            'limitActions' => $gallerySettings['limitActions'],
+            'publicAllowExtend' => !empty($globalSettings['publicAllowExtend'])
         ],
         'limits' => $limits
     ]);
@@ -782,6 +785,7 @@ function handlePublicConfig() {
         'success' => true,
         'allowPublicGalleryCreation' => !empty($settings['allowPublicGalleryCreation']),
         'contactEmail' => isset($settings['contactEmail']) ? $settings['contactEmail'] : '',
+        'publicAllowExtend' => !empty($settings['publicAllowExtend']),
         'publicDefaults' => [
             'viewerUploadsEnabled' => !empty($settings['publicDefaultViewerUploadsEnabled']),
             'maxGalleryBytes' => (int) ($settings['publicDefaultMaxGalleryBytes'] ?? 0),
@@ -816,6 +820,11 @@ function handleExtendGallery() {
     }
 
     $globalSettings = getSettings();
+    if (empty($globalSettings['publicAllowExtend'])) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Extending shares has been disabled by the admin. Please contact them.']);
+        return;
+    }
     // Load with admin source to keep existing per-gallery data intact
     $settings = loadGallerySettings($gallery, 'admin', $globalSettings);
 
