@@ -85,6 +85,8 @@ const needMoreModalActions = document.getElementById('need-more-modal-actions');
 const needMoreModalClose = document.getElementById('need-more-modal-close');
 const needMoreModalDesc = document.getElementById('need-more-modal-desc');
 const publicCreate = document.getElementById('public-create');
+const publicCreateToggle = document.getElementById('public-create-toggle');
+const publicCreateForm = document.getElementById('public-create-form');
 const publicCreateName = document.getElementById('public-create-name');
 const publicCreateRefresh = document.getElementById('public-create-refresh');
 const publicCreateSubmit = document.getElementById('public-create-submit');
@@ -159,6 +161,20 @@ window.addEventListener('DOMContentLoaded', () => {
         publicCreateSubmit.addEventListener('click', async (e) => {
             e.preventDefault();
             await createPublicGallery();
+        });
+    }
+
+    if (publicCreateToggle) {
+        publicCreateToggle.addEventListener('click', () => {
+            // Once opened, keep the form visible and hide the toggle button
+            if (publicCreateForm) {
+                publicCreateForm.style.display = 'flex';
+            }
+            publicCreateToggle.style.display = 'none';
+            publicCreateToggle.setAttribute('aria-expanded', 'true');
+            if (!nameSuggestions || !nameSuggestions.length) {
+                fetchNameSuggestions();
+            }
         });
     }
 
@@ -474,15 +490,24 @@ async function loadPublicConfig() {
     try {
         const resp = await fetch('api/index.php?action=public_config');
         const data = await resp.json();
-        const allowShares = resp.ok && data.success ? !!data.allowPublicGalleryCreation : true;
+        const allowShares = resp.ok && data.success && !!data.allowPublicGalleryCreation;
         publicConfig = data.success ? data : null;
         contactEmail = data.contactEmail || '';
-        if (publicCreate && allowShares) publicCreate.style.display = 'block';
+        if (publicCreate) publicCreate.style.display = allowShares ? 'block' : 'none';
+        if (publicCreateToggle) publicCreateToggle.style.display = allowShares ? 'inline-flex' : 'none';
+        if (publicCreateForm && !allowShares) publicCreateForm.style.display = 'none';
+        const orLabel = document.getElementById('public-create-or');
+        if (orLabel) orLabel.style.display = allowShares ? 'block' : 'none';
+        if (publicCreateForm && !allowShares) publicCreateForm.style.display = 'none';
         await fetchNameSuggestions();
     } catch (error) {
         // silent fail; public create stays hidden
         publicConfig = null;
-        if (publicCreate) publicCreate.style.display = 'block';
+        if (publicCreate) publicCreate.style.display = 'none';
+        if (publicCreateToggle) publicCreateToggle.style.display = 'none';
+        if (publicCreateForm) publicCreateForm.style.display = 'none';
+        const orLabel = document.getElementById('public-create-or');
+        if (orLabel) orLabel.style.display = 'none';
     }
 }
 

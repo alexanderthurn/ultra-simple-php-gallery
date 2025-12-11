@@ -20,6 +20,10 @@
                     <img src="icon.svg" alt="mops" class="header-logo" id="header-logo">
                 </a>
                 <div class="header-title" id="brand-title">
+                    
+                    <div class="breadcrumb-row">
+                        <div id="directory-breadcrumb" class="directory-breadcrumb" style="display: none;"></div>
+                    </div>
                     <div class="title-row">
                         <h1 id="gallery-title" class="gallery-title" style="display: none;">mops</h1>
                         <button id="download-dir-zip-btn" class="mini-action-btn directory-download" aria-label="Download as ZIP" title="Download as ZIP" style="display: none;">
@@ -33,9 +37,6 @@
                             </span>
                             <span class="download-label">Download ZIP</span>
                         </button>
-                    </div>
-                    <div class="breadcrumb-row">
-                        <div id="directory-breadcrumb" class="directory-breadcrumb" style="display: none;"></div>
                     </div>
                     <span id="gallery-meta" class="product-tag">mops</span>
                 </div>
@@ -149,28 +150,34 @@
                 <img src="icon.svg" alt="Share" class="empty-icon">
                 <div class="empty-icon-caption">MOPS</div>
                 <div class="empty-subtitle">Minmalistic Open Photo Share</div>
-                <div class="selector-row">
-                    <div class="public-create selector-card" id="public-create">
-                        <div class="public-create-row">
-                            <button id="public-create-refresh" class="btn-icon" title="Refresh">↻</button>
-                            <input type="text" id="public-create-name" placeholder="funny-goose-bump" readonly>
-                        </div>
-                        <div class="public-create-actions">
-                            <button id="public-create-submit" class="btn-primary">New</button>
-                            <span id="public-create-status" class="public-create-status"></span>
-                        </div>
-                    </div>
+                <div class="selector-row column">
                     <div class="open-card selector-card">
                         <div class="public-create-row open-row">
-                            <input type="text" id="gallery-input" placeholder="Enter share name" value="">
+                            <div class="input-with-button">
+                                <input type="text" id="gallery-input" placeholder="Enter share name" value="">
+                                <button id="load-gallery-btn" class="btn-primary">Open</button>
+                            </div>
                         </div>
-                        <div class="public-create-actions">
-                            <button id="load-gallery-btn" class="btn-primary">Open</button>
+                    </div>
+                    <div class="public-create selector-card" id="public-create" style="display: none;">
+                        <div class="selector-or" id="public-create-or" style="display: none;">or</div>
+                        <button id="public-create-toggle" class="btn-primary create-toggle" aria-expanded="false">Create your own share</button>
+                        <div class="public-create-form" id="public-create-form" style="display: none;">
+                            <div class="public-create-row">
+                                <div class="input-with-button has-left-addon narrow">
+                                    <button id="public-create-refresh" class="btn-icon" title="Refresh">↻</button>
+                                    <input type="text" id="public-create-name" placeholder="funny-goose-bump" readonly>
+                                    <button id="public-create-submit" class="btn-primary">Create</button>
+                                </div>
+                            </div>
+                            <div class="public-create-actions">
+                                <span id="public-create-status" class="public-create-status"></span>
+                            </div>
                         </div>
                     </div>
                 </div>
                 <div id="recent-visits" class="recent-visits" style="display: none;">
-                    <h3 class="recent-title">Your last shares</h3>
+                    <h3 class="recent-title"></h3>
                     <div id="recent-list" class="recent-list"></div>
                 </div>
             </div>
@@ -197,7 +204,7 @@
                 <a href="dataprivacy.html">Data Privacy</a>
                 <a href="admin/index.html">Admin</a>
             </div>
-            <a class="footer-github" href="https://github.com/alexanderthurn/ultra-simple-php-gallery" target="_blank" rel="noreferrer">by Alexander Thurn - Github</a>
+            <a class="footer-github" href="https://github.com/alexanderthurn/ultra-simple-php-gallery" target="_blank" rel="noreferrer">Github</a>
         </footer>
     </div>
 

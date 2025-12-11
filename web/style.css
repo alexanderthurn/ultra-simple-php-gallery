@@ -6,6 +6,20 @@
     align-items: flex-start;
 }
 
+.selector-row.column {
+    flex-direction: column;
+    align-items: center;
+}
+
+.selector-or {
+    font-weight: 700;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-size: 0.9rem;
+    margin: 1rem 0 1.75rem;
+}
+
 .selector-card {
     flex: 1 1 50%;
     max-width: 460px;
@@ -150,6 +164,18 @@
     justify-content: center;
 }
 
+.input-with-button {
+    display: flex;
+    align-items: stretch;
+    gap: 0;
+    width: 100%;
+    max-width: 440px;
+}
+
+.input-with-button.narrow {
+    max-width: 320px;
+}
+
 .public-create-row input {
     flex: 1;
     min-width: 200px;
@@ -158,6 +184,52 @@
     border-radius: 10px;
     border: 1px solid var(--border);
     background: var(--surface);
+}
+
+.input-with-button input {
+    max-width: none;
+    border-radius: 12px 0 0 12px;
+}
+
+.input-with-button.has-left-addon input {
+    border-radius: 0;
+    min-width: 140px;
+    border-left: none;
+}
+
+.input-with-button .btn-icon {
+    border-radius: 12px 0 0 12px;
+    border: 1px solid var(--border);
+    border-right: none;
+    background: var(--surface);
+    box-shadow: none;
+    height: auto;
+    min-width: 48px;
+}
+
+.input-with-button .btn-primary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0 12px 12px 0;
+    height: auto;
+    padding: 0 1.2rem;
+    white-space: nowrap;
+    box-shadow: 0 16px 30px var(--glow);
+}
+
+.create-toggle {
+    width: 100%;
+    max-width: 440px;
+    justify-content: center;
+}
+
+.public-create-form {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    width: 100%;
+    align-items: center;
 }
 
 .public-create-actions {
@@ -472,7 +544,7 @@ body {
 }
 
 .recent-visits {
-    margin-top: 1rem;
+    margin-top: 5.5rem;
     text-align: center;
 }
 
@@ -572,7 +644,7 @@ body {
     padding: 0.85rem 0.95rem;
     background: #ffffff;
     border: none;
-    border-radius: 12px;
+    border-radius: 12px 0 0 12px;
     color: var(--text-primary);
     font-size: 1rem;
     transition: all 0.25s ease;
@@ -622,19 +694,19 @@ button, .btn-primary, .btn-secondary {
 }
 
 #load-gallery-btn {
-    background: transparent;
-    color: var(--text-primary);
-    padding: 0.75rem 1rem;
+    background: linear-gradient(135deg, var(--accent), #60a5fa);
+    color: white;
+    padding: 0 1.2rem;
     border: none;
-    border-radius: 0;
+    border-radius: 0 12px 12px 0;
     font-weight: 600;
     cursor: pointer;
-    transition: color 0.2s ease, transform 0.2s ease;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 #load-gallery-btn:hover {
-    color: var(--accent-hover);
     transform: translateY(-2px);
+    box-shadow: 0 18px 38px var(--glow);
 }
 
 /* Gallery Info */
