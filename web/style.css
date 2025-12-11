@@ -60,10 +60,50 @@
     font-weight: 600;
 }
 
+.limit-banner-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+}
+
+.limit-banner-info {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.limit-banner-reason {
+    margin-left: auto;
+    color: var(--error);
+}
+
 .limit-banner-actions {
     display: flex;
     flex-wrap: wrap;
     gap: 0.5rem;
+}
+
+.modal-content {
+    position: relative;
+}
+
+.modal-close {
+    position: absolute;
+    top: 0.75rem;
+    right: 0.75rem;
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 1.1rem;
+    cursor: pointer;
+    padding: 0.35rem;
+    border-radius: 8px;
+}
+
+.modal-close:hover {
+    background: var(--surface);
+    color: var(--text-primary);
 }
 
 .limit-action-btn {

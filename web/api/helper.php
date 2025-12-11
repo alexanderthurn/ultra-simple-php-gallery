@@ -19,6 +19,7 @@ function getDefaultSettings() {
         'maxImageWidth' => 1080,
         'maxImageFileSize' => 5242880,
         'maxFileSize' => 10485760,
+        'contactEmail' => '',
         // Public gallery creation toggle + strict defaults
         'allowPublicGalleryCreation' => false,
         'publicDefaultViewerUploadsEnabled' => true,
@@ -90,6 +91,7 @@ function getDefaultGallerySettings($source = 'admin', $globalSettings = null) {
 
     $defaults = [
         'createdAt' => date('c'),
+        'originalCreatedAt' => date('c'),
         'viewerUploadsEnabled' => $usePublicDefaults
             ? !empty($settings['publicDefaultViewerUploadsEnabled'])
             : !empty($settings['defaultViewerUploadsEnabled']),
@@ -102,6 +104,8 @@ function getDefaultGallerySettings($source = 'admin', $globalSettings = null) {
         'lifetimeDays' => $usePublicDefaults
             ? (int) ($settings['publicDefaultLifetimeDays'] ?? 0)
             : (int) ($settings['defaultLifetimeDays'] ?? 0),
+        'expiresAt' => null,
+        'extendCount' => 0,
         'limitActions' => [
             ['type' => 'contact', 'label' => 'Contact admin'],
             ['type' => 'upgrade', 'label' => 'Request more (placeholder)']
@@ -118,10 +122,13 @@ function normalizeGallerySettings(array $settings, $source = 'admin', $globalSet
     if (empty($merged['createdAt'])) {
         $merged['createdAt'] = $defaults['createdAt'];
     }
+    if (empty($merged['originalCreatedAt'])) {
+        $merged['originalCreatedAt'] = $merged['createdAt'];
+    }
 
     $merged['viewerUploadsEnabled'] = !empty($merged['viewerUploadsEnabled']);
 
-    $intKeys = ['maxGalleryBytes', 'maxPhotos', 'lifetimeDays'];
+    $intKeys = ['maxGalleryBytes', 'maxPhotos', 'lifetimeDays', 'extendCount'];
     foreach ($intKeys as $key) {
         if (isset($merged[$key])) {
             $merged[$key] = (int) $merged[$key];
@@ -214,12 +221,17 @@ function evaluateGalleryUploadAllowance($gallery, array $gallerySettings, $incom
     $blockedReasons = [];
     $expiresAt = null;
 
-    if (!empty($gallerySettings['lifetimeDays'])) {
+    $lifetimeDays = isset($gallerySettings['lifetimeDays']) ? (int) $gallerySettings['lifetimeDays'] : 0;
+    $configuredExpires = !empty($gallerySettings['expiresAt']) ? strtotime($gallerySettings['expiresAt']) : null;
+    if ($configuredExpires) {
+        $expiresAt = $configuredExpires;
+    } elseif (!empty($lifetimeDays)) {
         $createdAt = isset($gallerySettings['createdAt']) ? strtotime($gallerySettings['createdAt']) : time();
-        $expiresAt = strtotime('+' . (int) $gallerySettings['lifetimeDays'] . ' days', $createdAt);
-        if ($expiresAt !== false && time() >= $expiresAt) {
-            $blockedReasons[] = 'expired';
-        }
+        $expiresAt = strtotime('+' . $lifetimeDays . ' days', $createdAt);
+    }
+
+    if ($expiresAt !== null && $expiresAt !== false && time() >= $expiresAt) {
+        $blockedReasons[] = 'expired';
     }
 
     $maxBytes = isset($gallerySettings['maxGalleryBytes']) ? (int) $gallerySettings['maxGalleryBytes'] : 0;

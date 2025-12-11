@@ -44,15 +44,18 @@ const settingsForm = document.getElementById('settings-form');
 const maxImageWidthInput = document.getElementById('max-image-width');
 const maxImageFileSizeInput = document.getElementById('max-image-file-size');
 const maxFileSizeInput = document.getElementById('max-file-size');
+const contactEmailInput = document.getElementById('contact-email');
 const settingsStatus = document.getElementById('settings-status');
 const maxImageFileSizeMb = document.getElementById('max-image-file-size-mb');
 const maxFileSizeMb = document.getElementById('max-file-size-mb');
 const allowPublicGalleryCreationInput = document.getElementById('allow-public-gallery-creation');
 const publicMaxGalleryBytesInput = document.getElementById('public-max-gallery-bytes');
+const publicMaxGalleryBytesMb = document.getElementById('public-max-gallery-bytes-mb');
 const publicMaxPhotosInput = document.getElementById('public-max-photos');
 const publicLifetimeDaysInput = document.getElementById('public-lifetime-days');
 const publicViewerUploadsInput = document.getElementById('public-viewer-uploads');
 const defaultMaxGalleryBytesInput = document.getElementById('default-max-gallery-bytes');
+const defaultMaxGalleryBytesMb = document.getElementById('default-max-gallery-bytes-mb');
 const defaultMaxPhotosInput = document.getElementById('default-max-photos');
 const defaultLifetimeDaysInput = document.getElementById('default-lifetime-days');
 const defaultViewerUploadsInput = document.getElementById('default-viewer-uploads');
@@ -364,6 +367,14 @@ function setupEventListeners() {
     if (maxFileSizeInput) {
         maxFileSizeInput.addEventListener('input', () => updateSizeDisplay(maxFileSizeInput, maxFileSizeMb));
     }
+
+    if (publicMaxGalleryBytesInput) {
+        publicMaxGalleryBytesInput.addEventListener('input', () => updateSizeDisplay(publicMaxGalleryBytesInput, publicMaxGalleryBytesMb));
+    }
+
+    if (defaultMaxGalleryBytesInput) {
+        defaultMaxGalleryBytesInput.addEventListener('input', () => updateSizeDisplay(defaultMaxGalleryBytesInput, defaultMaxGalleryBytesMb));
+    }
 }
 
 // Check login status
@@ -438,6 +449,7 @@ async function loadSettings() {
                 maxImageWidth,
                 maxImageFileSize,
                 maxFileSize,
+                contactEmail,
                 allowPublicGalleryCreation,
                 publicDefaultViewerUploadsEnabled,
                 publicDefaultMaxGalleryBytes,
@@ -451,6 +463,7 @@ async function loadSettings() {
             if (maxImageWidthInput) maxImageWidthInput.value = maxImageWidth ?? '';
             if (maxImageFileSizeInput) maxImageFileSizeInput.value = maxImageFileSize ?? '';
             if (maxFileSizeInput) maxFileSizeInput.value = maxFileSize ?? '';
+            if (contactEmailInput) contactEmailInput.value = contactEmail ?? '';
             if (allowPublicGalleryCreationInput) allowPublicGalleryCreationInput.checked = !!allowPublicGalleryCreation;
             if (publicMaxGalleryBytesInput) publicMaxGalleryBytesInput.value = publicDefaultMaxGalleryBytes ?? '';
             if (publicMaxPhotosInput) publicMaxPhotosInput.value = publicDefaultMaxPhotos ?? '';
@@ -462,6 +475,8 @@ async function loadSettings() {
             if (defaultViewerUploadsInput) defaultViewerUploadsInput.checked = !!defaultViewerUploadsEnabled;
             updateSizeDisplay(maxImageFileSizeInput, maxImageFileSizeMb);
             updateSizeDisplay(maxFileSizeInput, maxFileSizeMb);
+            updateSizeDisplay(publicMaxGalleryBytesInput, publicMaxGalleryBytesMb);
+            updateSizeDisplay(defaultMaxGalleryBytesInput, defaultMaxGalleryBytesMb);
             setStatus(settingsStatus, 'Loaded');
         } else {
             setStatus(settingsStatus, data.error || 'Failed to load', true);
@@ -481,6 +496,7 @@ async function saveSettings() {
         if (maxImageWidthInput) formData.append('max_image_width', maxImageWidthInput.value || '0');
         if (maxImageFileSizeInput) formData.append('max_image_file_size', maxImageFileSizeInput.value || '0');
         if (maxFileSizeInput) formData.append('max_file_size', maxFileSizeInput.value || '0');
+        if (contactEmailInput) formData.append('contact_email', contactEmailInput.value || '');
         if (allowPublicGalleryCreationInput) formData.append('allow_public_gallery_creation', allowPublicGalleryCreationInput.checked ? '1' : '0');
         if (publicMaxGalleryBytesInput) formData.append('public_default_max_gallery_bytes', publicMaxGalleryBytesInput.value || '0');
         if (publicMaxPhotosInput) formData.append('public_default_max_photos', publicMaxPhotosInput.value || '0');
@@ -633,16 +649,17 @@ function displayGalleries(galleries) {
         const nameText = document.createElement('span');
         nameText.className = 'gallery-name-text';
         nameText.textContent = gallery.name;
-        nameText.onclick = () => {
+        nameText.onclick = (e) => {
+            e.stopPropagation();
             window.open(`../?gallery=${encodeURIComponent(gallery.name)}`, '_blank');
         };
         name.appendChild(nameText);
         header.appendChild(name);
 
-        const toggleBtn = document.createElement('button');
-        toggleBtn.className = 'btn-secondary btn-ghost gallery-toggle-btn';
-        toggleBtn.textContent = 'Show details';
-        header.appendChild(toggleBtn);
+        const summary = document.createElement('div');
+        summary.className = 'gallery-summary';
+        summary.textContent = buildGallerySummary(gallery);
+        header.appendChild(summary);
 
         const detail = document.createElement('div');
         detail.className = 'gallery-detail';
@@ -745,11 +762,23 @@ function displayGalleries(galleries) {
         detail.appendChild(actions);
         detail.appendChild(renderGallerySettingsBlock(gallery));
 
-        toggleBtn.onclick = () => {
-            const isOpen = detail.style.display === 'block';
-            detail.style.display = isOpen ? 'none' : 'block';
-            toggleBtn.textContent = isOpen ? 'Show details' : 'Hide details';
+        const toggleDetails = () => {
+            const willOpen = detail.style.display !== 'block';
+            detail.style.display = willOpen ? 'block' : 'none';
+            card.classList.toggle('is-open', willOpen);
+            summary.style.display = willOpen ? 'none' : 'block';
         };
+
+        header.addEventListener('click', (event) => {
+            if (name.contains(event.target)) return;
+            toggleDetails();
+        });
+
+        card.addEventListener('click', (event) => {
+            if (name.contains(event.target)) return;
+            if (detail.contains(event.target) && detail.style.display === 'block') return;
+            toggleDetails();
+        });
 
         card.appendChild(header);
         card.appendChild(detail);
@@ -772,19 +801,14 @@ function renderGallerySettingsBlock(gallery) {
     const grid = document.createElement('div');
     grid.className = 'gallery-settings-grid';
 
-    const viewerField = document.createElement('label');
-    viewerField.className = 'gallery-settings-field checkbox';
-    const viewerInput = document.createElement('input');
-    viewerInput.type = 'checkbox';
-    viewerInput.checked = !!settings.viewerUploadsEnabled;
-    viewerField.appendChild(viewerInput);
-    viewerField.appendChild(document.createTextNode('Allow viewers to upload'));
-    grid.appendChild(viewerField);
-
     const maxBytesField = document.createElement('div');
     maxBytesField.className = 'gallery-settings-field form-field';
     const maxBytesLabel = document.createElement('label');
     maxBytesLabel.textContent = 'Max size (bytes, 0 = unlimited)';
+    const maxBytesHint = document.createElement('span');
+    maxBytesHint.className = 'field-inline';
+    maxBytesHint.textContent = '≈ 0.00 MB';
+    maxBytesLabel.appendChild(maxBytesHint);
     const maxBytesInput = document.createElement('input');
     maxBytesInput.type = 'number';
     maxBytesInput.min = '0';
@@ -792,6 +816,12 @@ function renderGallerySettingsBlock(gallery) {
     maxBytesInput.value = settings.maxGalleryBytes ?? 0;
     maxBytesField.appendChild(maxBytesLabel);
     maxBytesField.appendChild(maxBytesInput);
+    const maxBytesHelp = document.createElement('span');
+    maxBytesHelp.className = 'field-hint';
+    maxBytesHelp.textContent = '0 means no size limit';
+    maxBytesField.appendChild(maxBytesHelp);
+    updateSizeDisplay(maxBytesInput, maxBytesHint);
+    maxBytesInput.addEventListener('input', () => updateSizeDisplay(maxBytesInput, maxBytesHint));
     grid.appendChild(maxBytesField);
 
     const maxPhotosField = document.createElement('div');
@@ -805,6 +835,10 @@ function renderGallerySettingsBlock(gallery) {
     maxPhotosInput.value = settings.maxPhotos ?? 0;
     maxPhotosField.appendChild(maxPhotosLabel);
     maxPhotosField.appendChild(maxPhotosInput);
+    const maxPhotosHint = document.createElement('span');
+    maxPhotosHint.className = 'field-hint';
+    maxPhotosHint.textContent = '0 means no photo limit';
+    maxPhotosField.appendChild(maxPhotosHint);
     grid.appendChild(maxPhotosField);
 
     const lifetimeField = document.createElement('div');
@@ -818,17 +852,23 @@ function renderGallerySettingsBlock(gallery) {
     lifetimeInput.value = settings.lifetimeDays ?? 0;
     lifetimeField.appendChild(lifetimeLabel);
     lifetimeField.appendChild(lifetimeInput);
+    const lifetimeHint = document.createElement('span');
+    lifetimeHint.className = 'field-hint';
+    lifetimeHint.textContent = '0 keeps the gallery forever';
+    lifetimeField.appendChild(lifetimeHint);
     grid.appendChild(lifetimeField);
 
-    wrapper.appendChild(grid);
+    const viewerField = document.createElement('label');
+    viewerField.className = 'gallery-settings-field checkbox checkbox-field';
+    const viewerInput = document.createElement('input');
+    viewerInput.type = 'checkbox';
+    viewerInput.checked = !!settings.viewerUploadsEnabled;
+    viewerField.appendChild(viewerInput);
+    viewerField.appendChild(document.createTextNode('Allow viewers to upload'));
+    viewerField.style.gridColumn = '1 / -1';
+    grid.appendChild(viewerField);
 
-    const meta = document.createElement('div');
-    meta.className = 'gallery-settings-meta';
-    const maxBytesText = settings.maxGalleryBytes ? `${formatBytesShort(stats.totalBytes || 0)} / ${formatBytesShort(settings.maxGalleryBytes)}` : `${formatBytesShort(stats.totalBytes || 0)} / ∞`;
-    const maxPhotosText = settings.maxPhotos ? `${stats.fileCount || 0} / ${settings.maxPhotos}` : `${stats.fileCount || 0} / ∞`;
-    const expiresText = limits.expiresAt ? new Date(limits.expiresAt).toLocaleDateString() : 'No expiry';
-    meta.textContent = `Size: ${maxBytesText} · Photos: ${maxPhotosText} · Deletes on: ${expiresText}`;
-    wrapper.appendChild(meta);
+    wrapper.appendChild(grid);
 
     const status = document.createElement('div');
     status.className = 'gallery-settings-status';
@@ -905,6 +945,38 @@ function formatBytesShort(bytes) {
         idx++;
     }
     return `${value.toFixed(value >= 10 ? 0 : 1)} ${units[idx]}`;
+}
+
+function formatMbCompact(bytes) {
+    const mb = (bytes || 0) / (1024 * 1024);
+    return `${mb.toLocaleString(undefined, {
+        minimumFractionDigits: mb >= 10 ? 0 : 1,
+        maximumFractionDigits: 1
+    })} MB`;
+}
+
+function formatDeleteCountdown(expiresAt, lifetimeDays) {
+    if (expiresAt) {
+        const expiresDate = new Date(expiresAt);
+        const diffDays = Math.ceil((expiresDate - new Date()) / (1000 * 60 * 60 * 24));
+        if (diffDays <= 0) return '0 days';
+        return `${diffDays} day${diffDays === 1 ? '' : 's'}`;
+    }
+    if (lifetimeDays) {
+        return `${lifetimeDays} day${lifetimeDays === 1 ? '' : 's'}`;
+    }
+    return '∞ days';
+}
+
+function buildGallerySummary(gallery) {
+    const limits = gallery.limits || {};
+    const stats = limits.stats || {};
+    const settings = gallery.settings || {};
+    const sizeText = formatMbCompact(stats.totalBytes || 0);
+    const fileCount = stats.fileCount || 0;
+    const photosText = `${fileCount} photo${fileCount === 1 ? '' : 's'}`;
+    const deleteText = formatDeleteCountdown(limits.expiresAt, settings.lifetimeDays);
+    return `${sizeText} / ${photosText} / ${deleteText}`;
 }
 
 // Delete gallery

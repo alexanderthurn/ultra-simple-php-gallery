@@ -49,6 +49,10 @@ switch ($action) {
     case 'public_config':
         handlePublicConfig();
         break;
+
+    case 'extend_gallery':
+        handleExtendGallery();
+        break;
     
     default:
         http_response_code(400);
@@ -118,6 +122,7 @@ function handleList() {
             'maxPhotos' => $gallerySettings['maxPhotos'],
             'lifetimeDays' => $gallerySettings['lifetimeDays'],
             'createdAt' => $gallerySettings['createdAt'],
+            'expiresAt' => isset($gallerySettings['expiresAt']) ? $gallerySettings['expiresAt'] : null,
             'limitActions' => $gallerySettings['limitActions']
         ],
         'limits' => $limits
@@ -776,12 +781,72 @@ function handlePublicConfig() {
     echo json_encode([
         'success' => true,
         'allowPublicGalleryCreation' => !empty($settings['allowPublicGalleryCreation']),
+        'contactEmail' => isset($settings['contactEmail']) ? $settings['contactEmail'] : '',
         'publicDefaults' => [
             'viewerUploadsEnabled' => !empty($settings['publicDefaultViewerUploadsEnabled']),
             'maxGalleryBytes' => (int) ($settings['publicDefaultMaxGalleryBytes'] ?? 0),
             'maxPhotos' => (int) ($settings['publicDefaultMaxPhotos'] ?? 0),
             'lifetimeDays' => (int) ($settings['publicDefaultLifetimeDays'] ?? 0),
         ]
+    ]);
+}
+
+function handleExtendGallery() {
+    $gallery = isset($_POST['gallery']) ? $_POST['gallery'] : '';
+    $viewPassword = isset($_POST['viewPassword']) ? $_POST['viewPassword'] : '';
+
+    if (empty($gallery)) {
+        http_response_code(400);
+        echo json_encode(['error' => 'Gallery name required']);
+        return;
+    }
+
+    $galleryPath = getGalleryPath($gallery);
+    if (!is_dir($galleryPath)) {
+        http_response_code(404);
+        echo json_encode(['error' => 'Gallery not found']);
+        return;
+    }
+
+    $hasViewPassword = file_exists($galleryPath . '/.viewpassword');
+    if ($hasViewPassword && !verifyGalleryViewAccess($gallery, $viewPassword)) {
+        http_response_code(401);
+        echo json_encode(['error' => 'View password required or invalid']);
+        return;
+    }
+
+    $settings = loadGallerySettings($gallery);
+    $lifetime = isset($settings['lifetimeDays']) ? (int) $settings['lifetimeDays'] : 0;
+    if ($lifetime <= 0) {
+        http_response_code(400);
+        echo json_encode(['error' => 'Lifetime not configured for this gallery']);
+        return;
+    }
+
+    $expiresAt = date('c', strtotime('+' . $lifetime . ' days'));
+    $settings['expiresAt'] = $expiresAt;
+    if (empty($settings['originalCreatedAt'])) {
+        $settings['originalCreatedAt'] = $settings['createdAt'] ?? date('c');
+    }
+    $settings['extendCount'] = isset($settings['extendCount']) ? ((int) $settings['extendCount'] + 1) : 1;
+    if (empty($settings['createdAt'])) {
+        $settings['createdAt'] = date('c');
+    }
+
+    if (!saveGallerySettings($gallery, $settings)) {
+        http_response_code(500);
+        echo json_encode(['error' => 'Failed to extend gallery']);
+        return;
+    }
+
+    $limits = evaluateGalleryUploadAllowance($gallery, $settings, 0, 0);
+
+    echo json_encode([
+        'success' => true,
+        'expiresAt' => $expiresAt,
+        'extendCount' => $settings['extendCount'],
+        'limits' => $limits,
+        'settings' => $settings
     ]);
 }
 

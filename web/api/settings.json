@@ -2,6 +2,7 @@
     "maxImageWidth": 2160,
     "maxImageFileSize": 5242880,
     "maxFileSize": 50000000,
+    "contactEmail": "admin@froso.de",
     "allowPublicGalleryCreation": true,
     "publicDefaultViewerUploadsEnabled": true,
     "publicDefaultMaxGalleryBytes": 52428800,

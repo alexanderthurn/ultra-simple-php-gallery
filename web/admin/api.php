@@ -494,6 +494,7 @@ function handleSaveSettings() {
     $maxImageWidth = isset($_POST['max_image_width']) ? (int) $_POST['max_image_width'] : $defaults['maxImageWidth'];
     $maxImageFileSize = isset($_POST['max_image_file_size']) ? (int) $_POST['max_image_file_size'] : $defaults['maxImageFileSize'];
     $maxFileSize = isset($_POST['max_file_size']) ? (int) $_POST['max_file_size'] : $defaults['maxFileSize'];
+    $contactEmail = isset($_POST['contact_email']) ? trim($_POST['contact_email']) : $defaults['contactEmail'];
     $allowPublic = isset($_POST['allow_public_gallery_creation'])
         ? filter_var($_POST['allow_public_gallery_creation'], FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE) ?? false
         : $defaults['allowPublicGalleryCreation'];
@@ -514,6 +515,7 @@ function handleSaveSettings() {
         'maxImageWidth' => max(0, $maxImageWidth),
         'maxImageFileSize' => max(0, $maxImageFileSize),
         'maxFileSize' => max(0, $maxFileSize),
+        'contactEmail' => $contactEmail,
         'allowPublicGalleryCreation' => $allowPublic ? true : false,
         'publicDefaultViewerUploadsEnabled' => $publicDefaultViewerUploads ? true : false,
         'publicDefaultMaxGalleryBytes' => max(0, $publicDefaultMaxBytes),

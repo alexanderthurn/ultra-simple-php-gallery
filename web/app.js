@@ -14,6 +14,7 @@ let isLoggedIn = false; // editor access
 let currentSettings = null;
 let currentLimits = null;
 let publicConfig = null;
+let contactEmail = '';
 let nameSuggestions = [];
 let suggestionIndex = 0;
 const DEFAULT_PAGE_TITLE = 'Gallery';
@@ -76,10 +77,10 @@ const lightboxRightHotspot = document.getElementById('lightbox-right-hotspot');
 const limitBanner = document.getElementById('limit-banner');
 const limitBannerText = document.getElementById('limit-banner-text');
 const limitBannerActions = document.getElementById('limit-banner-actions');
-const limitModal = document.getElementById('limit-modal');
-const limitModalActions = document.getElementById('limit-modal-actions');
-const limitModalClose = document.getElementById('limit-modal-close');
-const limitModalDesc = document.getElementById('limit-modal-desc');
+const needMoreModal = document.getElementById('need-more-modal');
+const needMoreModalActions = document.getElementById('need-more-modal-actions');
+const needMoreModalClose = document.getElementById('need-more-modal-close');
+const needMoreModalDesc = document.getElementById('need-more-modal-desc');
 const publicCreate = document.getElementById('public-create');
 const publicCreateName = document.getElementById('public-create-name');
 const publicCreateRefresh = document.getElementById('public-create-refresh');
@@ -158,9 +159,9 @@ window.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    if (limitModalClose) {
-        limitModalClose.addEventListener('click', () => {
-            hideLimitDialog();
+    if (needMoreModalClose) {
+        needMoreModalClose.addEventListener('click', () => {
+            hideNeedMoreDialog();
         });
     }
     
@@ -475,6 +476,7 @@ async function loadPublicConfig() {
         const data = await resp.json();
         if (resp.ok && data.success && data.allowPublicGalleryCreation) {
             publicConfig = data;
+            contactEmail = data.contactEmail || '';
             if (publicCreate) publicCreate.style.display = 'block';
             await fetchNameSuggestions();
         } else {
@@ -827,35 +829,57 @@ function formatMBOneDecimalComma(bytes) {
     return mb.toFixed(1).replace('.', ',') + ' MB';
 }
 
-function showLimitDialog(actionsOverride) {
-    if (!limitModal || !limitModalActions || !limitModalDesc) return;
-    const actions = actionsOverride
-        || (currentSettings && currentSettings.limitActions)
-        || (currentLimits && currentLimits.limitActions)
-        || [];
-    limitModalActions.innerHTML = '';
-    if (Array.isArray(actions) && actions.length) {
-        actions.forEach((action) => {
-            const btn = document.createElement('button');
-            btn.className = 'btn-primary';
-            btn.textContent = action.label || 'Contact admin';
-            btn.onclick = () => {
-                alert('Placeholder action. Please contact the admin.');
-            };
-            limitModalActions.appendChild(btn);
-        });
-        limitModalDesc.textContent = 'You can contact the admin or request more space.';
-    } else {
-        const note = document.createElement('p');
-        note.textContent = 'Contact the admin for more storage or time.';
-        limitModalActions.appendChild(note);
-        limitModalDesc.textContent = 'Upload limit reached.';
-    }
-    limitModal.style.display = 'flex';
+function showNeedMoreDialog(actionsOverride) {
+    if (!needMoreModal || !needMoreModalActions || !needMoreModalDesc) return;
+    const modalTitle = needMoreModal.querySelector('h3');
+    if (modalTitle) modalTitle.textContent = 'Need more?';
+    needMoreModalDesc.textContent = 'You can contact the admin to get a higher data limit. If you just want to extend the expiry date, click the button "Extend".';
+    needMoreModalActions.innerHTML = '';
+    const btnExtend = document.createElement('button');
+    btnExtend.className = 'btn-primary';
+    btnExtend.textContent = 'Extend';
+    btnExtend.onclick = () => extendGalleryLifetime();
+    needMoreModalActions.appendChild(btnExtend);
+
+    const emailText = contactEmail || 'admin@example.com';
+    const emailLink = document.createElement('a');
+    emailLink.href = `mailto:${emailText}`;
+    emailLink.className = 'btn-secondary';
+    emailLink.textContent = emailText;
+    needMoreModalActions.appendChild(emailLink);
+
+    needMoreModal.style.display = 'flex';
 }
 
-function hideLimitDialog() {
-    if (limitModal) limitModal.style.display = 'none';
+async function extendGalleryLifetime() {
+    if (!currentGallery) return;
+    try {
+        const formData = new FormData();
+        formData.append('action', 'extend_gallery');
+        formData.append('gallery', currentGallery);
+        if (viewerPassword) formData.append('viewPassword', viewerPassword);
+        const resp = await fetch('api/index.php?action=extend_gallery', {
+            method: 'POST',
+            body: formData
+        });
+        const data = await resp.json();
+        if (!resp.ok || !data.success) {
+            alert(data.error || 'Failed to extend gallery');
+            return;
+        }
+        currentLimits = data.limits || currentLimits;
+        currentSettings = data.settings || currentSettings;
+        updateLimitBanner();
+        hideNeedMoreDialog();
+        await loadGallery(currentGallery, currentDir, currentView);
+    } catch (e) {
+        console.error('Extend failed', e);
+        alert('Failed to extend gallery');
+    }
+}
+
+function hideNeedMoreDialog() {
+    if (needMoreModal) needMoreModal.style.display = 'none';
 }
 
 function createFileViewer(file) {
@@ -1069,59 +1093,52 @@ function updateLimitBanner() {
         : 'No expiry';
 
     const blocked = reasons.length > 0;
-    const reasonText = blocked
-        ? `Uploads blocked: ${reasons.join(', ')}`
-        : '';
+    const reasonText = blocked ? 'Quota reached' : '';
 
     limitBannerText.innerHTML = '';
-    if (reasonText) {
-        const reasonSpan = document.createElement('span');
-        reasonSpan.textContent = reasonText;
-        limitBannerText.appendChild(reasonSpan);
-    }
+
+    const infoRow = document.createElement('div');
+    infoRow.className = 'limit-banner-row';
+
+    const infoGroup = document.createElement('div');
+    infoGroup.className = 'limit-banner-info';
 
     const bytesBtn = document.createElement('button');
     bytesBtn.type = 'button';
     bytesBtn.className = 'link-button';
-    bytesBtn.textContent = reasonText ? ` · ${bytesText}` : bytesText;
-    bytesBtn.onclick = () => showLimitDialog();
+    bytesBtn.textContent = bytesText;
+    bytesBtn.onclick = () => showNeedMoreDialog();
 
     const photosBtn = document.createElement('button');
     photosBtn.type = 'button';
     photosBtn.className = 'link-button';
     photosBtn.textContent = ` · ${photosText}`;
-    photosBtn.onclick = () => showLimitDialog();
+    photosBtn.onclick = () => showNeedMoreDialog();
 
     const expiresBtn = document.createElement('button');
     expiresBtn.type = 'button';
     expiresBtn.className = 'link-button';
     expiresBtn.textContent = ` · ${expiresText}`;
-    expiresBtn.onclick = () => showLimitDialog();
+    expiresBtn.onclick = () => showNeedMoreDialog();
 
-    limitBannerText.appendChild(bytesBtn);
-    limitBannerText.appendChild(photosBtn);
-    limitBannerText.appendChild(expiresBtn);
+    infoGroup.appendChild(bytesBtn);
+    infoGroup.appendChild(photosBtn);
+    infoGroup.appendChild(expiresBtn);
+    infoRow.appendChild(infoGroup);
+
+    if (reasonText) {
+        const reasonSpan = document.createElement('span');
+        reasonSpan.className = 'limit-banner-reason';
+        reasonSpan.textContent = reasonText;
+        infoRow.appendChild(reasonSpan);
+    }
+
+    limitBannerText.appendChild(infoRow);
     limitBanner.classList.toggle('limit-banner--blocked', blocked);
     limitBanner.style.display = 'block';
 
     limitBannerActions.innerHTML = '';
-    if (blocked) {
-        const actions = (currentSettings && currentSettings.limitActions) || (currentLimits && currentLimits.limitActions) || [];
-        if (Array.isArray(actions) && actions.length) {
-            actions.forEach((action) => {
-                const btn = document.createElement('button');
-                btn.className = 'btn-secondary limit-action-btn';
-                btn.textContent = action.label || 'Learn more';
-                btn.onclick = () => showLimitDialog(actions);
-                limitBannerActions.appendChild(btn);
-            });
-        } else {
-            const fallback = document.createElement('span');
-            fallback.className = 'limit-banner-hint';
-            fallback.textContent = 'Contact the admin for more space.';
-            limitBannerActions.appendChild(fallback);
-        }
-    }
+    // No inline actions; use the Need more? dialog instead.
 }
 
 function openUploadAreaForDrag() {
