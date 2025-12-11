@@ -13,6 +13,8 @@ let hasViewAccess = false;
 let isLoggedIn = false; // editor access
 let currentSettings = null;
 let currentLimits = null;
+let lastLimitSummary = '';
+const LIMIT_LINK_CLASS = 'limit-link';
 let publicConfig = null;
 let contactEmail = '';
 let nameSuggestions = [];
@@ -649,7 +651,8 @@ async function loadGallery(galleryName, dir = '', view = currentView) {
         }
 
         if (data.success) {
-            currentFiles = data.files;
+            const userFiles = filterUserFiles(data.files);
+            currentFiles = userFiles;
             currentDir = normalizeRelativePath(data.dir || '');
             currentView = data.view === 'flat' ? 'flat' : 'dir';
             galleryHasEditPassword = data.hasEditPassword ?? data.hasPassword ?? false;
@@ -691,7 +694,12 @@ async function loadGallery(galleryName, dir = '', view = currentView) {
             }
             
             const hasDirectories = displayDirectories(currentView === 'dir' ? data.directories || [] : []);
-            displayGallery(data.files, hasDirectories);
+            const hasUserFiles = userFiles.length > 0;
+
+            if (downloadZipBtn) {
+                downloadZipBtn.style.display = hasUserFiles ? 'inline-flex' : 'none';
+            }
+            displayGallery(userFiles, hasDirectories);
             updateBreadcrumb(hasDirectories);
             updateViewToggleLabel();
             setPageMetadata(currentGallery, currentDir);
@@ -754,10 +762,11 @@ async function loadGallery(galleryName, dir = '', view = currentView) {
 
 // Display gallery
 function displayGallery(files, hasDirectoriesOverride) {
+    const userFiles = filterUserFiles(files);
     const hasDirectories = typeof hasDirectoriesOverride === 'boolean'
         ? hasDirectoriesOverride
         : (directoryList && directoryList.children.length > 0 && directoryList.style.display !== 'none');
-    if (files.length === 0 && !hasDirectories) {
+    if (userFiles.length === 0 && !hasDirectories) {
         const canUpload = userCanUpload();
         const msg = canUpload
             ? 'No files yet. Drag your files here or click Upload.'
@@ -768,7 +777,7 @@ function displayGallery(files, hasDirectoriesOverride) {
     
     galleryGrid.innerHTML = '';
     
-    files.forEach((file, index) => {
+    userFiles.forEach((file, index) => {
         const item = document.createElement('div');
         item.className = 'gallery-item';
         item.dataset.index = index;
@@ -821,6 +830,10 @@ function displayGallery(files, hasDirectoriesOverride) {
     
     // Update delete buttons visibility after displaying
     updateDeleteButtonsVisibility();
+}
+
+function filterUserFiles(files) {
+    return (files || []).filter((file) => (file.name || '').toLowerCase() !== 'settings.json');
 }
 
 // Helpers for non-image/video files
@@ -1100,12 +1113,14 @@ function userCanUpload() {
 }
 
 function updateLimitBanner() {
-    if (!limitBanner || !limitBannerText || !limitBannerActions || !limitFooter || !limitFooterText) return;
+    if (!limitBanner || !limitBannerText || !limitBannerActions || !limitFooter || !limitFooterText || !galleryTitle) return;
     if (!currentGallery || !currentLimits) {
         limitBanner.style.display = 'none';
         limitBannerActions.innerHTML = '';
         limitFooter.style.display = 'none';
         limitFooterText.textContent = '';
+        lastLimitSummary = '';
+        galleryTitle.title = '';
         return;
     }
 
@@ -1124,12 +1139,17 @@ function updateLimitBanner() {
         ? `Expires on ${new Date(currentLimits.expiresAt).toLocaleDateString()}`
         : 'No expiry';
 
+    lastLimitSummary = `${bytesText} · ${photosText} · ${expiresText}`;
+    galleryTitle.title = lastLimitSummary;
+
+    const hasUserFiles = Array.isArray(currentFiles) && currentFiles.length > 0;
     const blocked = reasons.length > 0;
     const reasonText = blocked ? 'Quota reached' : '';
+    const showTopBanner = blocked && hasUserFiles;
 
-    // Top banner: only when blocked
-    if (blocked) {
-        limitBannerText.textContent = `${bytesText} · ${photosText} · ${expiresText} · ${reasonText}`;
+    // Top banner: only when blocked and when there are user files
+    if (showTopBanner) {
+        renderLimitLink(limitBannerText, `${bytesText} · ${photosText} · ${expiresText} · ${reasonText}`);
         limitBanner.classList.add('limit-banner--blocked');
         limitBanner.style.display = 'block';
     } else {
@@ -1139,11 +1159,27 @@ function updateLimitBanner() {
     }
     limitBannerActions.innerHTML = '';
 
-    // Bottom summary: always show when limits exist
-    limitFooterText.textContent = `${bytesText} · ${photosText} · ${expiresText}`;
-    limitFooter.style.display = 'flex';
+    // Bottom summary: show only when there are user files
+    if (hasUserFiles) {
+        renderLimitLink(limitFooterText, lastLimitSummary);
+        limitFooter.style.display = 'flex';
+    } else {
+        limitFooterText.textContent = '';
+        limitFooter.style.display = 'none';
+    }
 
     updateGalleryMeta();
+}
+
+function renderLimitLink(target, text) {
+    if (!target) return;
+    target.innerHTML = '';
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = LIMIT_LINK_CLASS;
+    btn.textContent = text;
+    btn.onclick = () => showNeedMoreDialog();
+    target.appendChild(btn);
 }
 
 function updateGalleryMeta() {
@@ -1970,8 +2006,8 @@ function updateBreadcrumb(hasDirectories) {
     
     directoryBreadcrumb.innerHTML = '';
     
-    // Show breadcrumbs whenever a gallery is loaded (even at root)
-    const shouldShow = !!currentGallery;
+    const hasUserFiles = Array.isArray(currentFiles) && currentFiles.length > 0;
+    const shouldShow = !!currentGallery && hasUserFiles;
     if (downloadDirZipBtn) {
         downloadDirZipBtn.style.display = shouldShow ? 'inline-flex' : 'none';
     }
@@ -1979,23 +2015,32 @@ function updateBreadcrumb(hasDirectories) {
         directoryBreadcrumb.style.display = 'none';
         return;
     }
-    
+
+    // Build crumbs excluding the deepest folder (current location)
+    const parts = currentDir ? currentDir.split('/').filter(Boolean) : [];
+    if (!parts.length) {
+        directoryBreadcrumb.style.display = 'none';
+        return;
+    }
+    const ancestorParts = parts.slice(0, -1);
+
     const crumbs = [];
-    
+
+    // Root crumb (share root)
     const rootCrumb = document.createElement('button');
     rootCrumb.type = 'button';
     rootCrumb.className = 'breadcrumb-btn';
     rootCrumb.textContent = currentGallery || 'Home';
     rootCrumb.onclick = () => {
         loadGallery(currentGallery, '');
-        pushStateWithParams();
+        pushStateWithParams('');
     };
     crumbs.push(rootCrumb);
-    
-    if (currentDir) {
-        const parts = currentDir.split('/').filter(Boolean);
+
+    // Ancestor folders (omit the deepest/current one)
+    if (ancestorParts.length) {
         let accum = '';
-        parts.forEach((part) => {
+        ancestorParts.forEach((part) => {
             accum = accum ? `${accum}/${part}` : part;
             const path = accum; // capture per-crumb
             const btn = document.createElement('button');
@@ -2009,7 +2054,7 @@ function updateBreadcrumb(hasDirectories) {
             crumbs.push(btn);
         });
     }
-    
+
     crumbs.forEach((c, idx) => {
         directoryBreadcrumb.appendChild(c);
         if (idx < crumbs.length - 1) {
@@ -2019,6 +2064,12 @@ function updateBreadcrumb(hasDirectories) {
             directoryBreadcrumb.appendChild(sep);
         }
     });
+    if (crumbs.length) {
+        const trailingSep = document.createElement('span');
+        trailingSep.className = 'breadcrumb-sep';
+        trailingSep.textContent = '/';
+        directoryBreadcrumb.appendChild(trailingSep);
+    }
     
     directoryBreadcrumb.style.display = 'flex';
 }

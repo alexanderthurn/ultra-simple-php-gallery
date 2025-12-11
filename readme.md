@@ -1,6 +1,8 @@
-# MOPS: minimalistc open photo share
+# MOPS
 
-The most simple photo share! Just upload it to your Apache/PHP server. It focuses on being fast, minimal, and easy: upload the `web/` folder, visit `admin/`, set an admin password, and let your friends add photos (passwordless or with password)
+## minimalistic open photo share
+
+The most fluffy and simple photo share! Just upload it to your Apache/PHP server. It focuses on being fast, minimal, and easy: upload the `web/` folder, visit `admin/`, set an admin password, and let your friends add photos (passwordless or with password)
 
 ## What it does
 

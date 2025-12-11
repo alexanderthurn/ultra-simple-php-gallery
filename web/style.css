@@ -1,6 +1,5 @@
 .selector-row {
     display: flex;
-    gap: 1rem;
     flex-wrap: wrap;
     justify-content: center;
     align-items: flex-start;
@@ -972,7 +971,7 @@ button, .btn-primary, .btn-secondary {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 0.35rem;
+    gap: 0.2rem;
     margin: 0;
     color: var(--text-secondary);
     font-size: 1.05rem;
@@ -1060,6 +1059,26 @@ button, .btn-primary, .btn-secondary {
 
 .breadcrumb-sep {
     color: var(--text-secondary);
+    padding: 0 0.05rem;
+}
+
+.limit-link {
+    background: none;
+    border: none;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+    padding: 0;
+    text-decoration: underline;
+    text-decoration-color: var(--text-secondary);
+    text-decoration-thickness: 1px;
+    text-underline-offset: 3px;
+}
+
+.limit-link:hover,
+.limit-link:focus-visible {
+    color: var(--accent-hover);
+    text-decoration-color: var(--accent-hover);
 }
 
 .directory-list {
