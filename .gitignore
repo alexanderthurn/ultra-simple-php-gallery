@@ -3,3 +3,4 @@
 .password
 *_thumb.*
 web/data/*
+api/settings.json

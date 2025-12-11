@@ -1812,48 +1812,92 @@ async function uploadFile(
     }
 }
 
-// Compress image
+// Get upload constraints from settings or public defaults
+function getImageConstraints() {
+    const maxImageWidth = currentSettings?.maxImageWidth
+        ?? publicConfig?.publicDefaults?.maxImageWidth
+        ?? 0;
+    const maxImageFileSize = currentSettings?.maxImageFileSize
+        ?? publicConfig?.publicDefaults?.maxImageFileSize
+        ?? 0;
+    const maxFileSize = currentSettings?.maxFileSize
+        ?? publicConfig?.publicDefaults?.maxFileSize
+        ?? 0;
+    return {
+        maxImageWidth: maxImageWidth > 0 ? maxImageWidth : 0,
+        maxImageFileSize: maxImageFileSize > 0 ? maxImageFileSize : 0,
+        maxFileSize: maxFileSize > 0 ? maxFileSize : 0
+    };
+}
+
+// Compress image honoring server-side limits
 function compressImage(file) {
     return new Promise((resolve, reject) => {
+        const { maxImageWidth, maxImageFileSize, maxFileSize } = getImageConstraints();
+        const targetWidth = maxImageWidth > 0 ? maxImageWidth : null;
+        const sizeLimit = Math.min(
+            ...[maxImageFileSize, maxFileSize].filter((n) => n > 0)
+        ) || (maxImageFileSize || maxFileSize || 0);
+
         const reader = new FileReader();
-        
+
         reader.onload = (e) => {
             const img = new Image();
-            
-            img.onload = () => {
+
+            img.onload = async () => {
                 const canvas = document.createElement('canvas');
                 let width = img.width;
                 let height = img.height;
-                
-                // Resize if width > 1080px
-                if (width > 1080) {
-                    height = (height / width) * 1080;
-                    width = 1080;
+
+                if (targetWidth && width > targetWidth) {
+                    height = (height / width) * targetWidth;
+                    width = targetWidth;
                 }
-                
-                canvas.width = width;
-                canvas.height = height;
-                
+
                 const ctx = canvas.getContext('2d');
-                ctx.drawImage(img, 0, 0, width, height);
-                
-                canvas.toBlob((blob) => {
-                    if (blob) {
-                        const compressedFile = new File([blob], file.name, {
-                            type: 'image/jpeg',
-                            lastModified: Date.now()
-                        });
-                        resolve(compressedFile);
-                    } else {
-                        resolve(file); // Fallback to original
+
+                const renderToBlob = (w, h, quality) => new Promise((res) => {
+                    canvas.width = w;
+                    canvas.height = h;
+                    ctx.clearRect(0, 0, w, h);
+                    ctx.drawImage(img, 0, 0, w, h);
+                    canvas.toBlob((blob) => res(blob), 'image/jpeg', quality);
+                });
+
+                let quality = 0.9;
+                const minQuality = 0.5;
+                const qualityStep = 0.05;
+                let blob = await renderToBlob(width, height, quality);
+
+                // Reduce quality (and if needed dimensions) until under limit
+                if (sizeLimit > 0 && blob) {
+                    while (blob.size > sizeLimit && (quality > minQuality || width > 640)) {
+                        if (quality > minQuality) {
+                            quality = Math.max(minQuality, quality - qualityStep);
+                        } else {
+                            width = Math.round(width * 0.9);
+                            height = Math.round(height * 0.9);
+                        }
+                        blob = await renderToBlob(width, height, quality);
+                        if (!blob) break;
                     }
-                }, 'image/jpeg', 0.85);
+                }
+
+                if (blob) {
+                    const compressedFile = new File([blob], file.name, {
+                        type: 'image/jpeg',
+                        lastModified: Date.now()
+                    });
+                    resolve(compressedFile);
+                } else {
+                    resolve(file); // fallback
+                }
             };
-            
+
             img.onerror = () => reject(new Error('Failed to load image'));
             img.src = e.target.result;
         };
-        
+
         reader.onerror = () => reject(new Error('Failed to read file'));
         reader.readAsDataURL(file);
     });

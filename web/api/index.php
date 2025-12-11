@@ -126,7 +126,10 @@ function handleList() {
             'createdAt' => $gallerySettings['createdAt'],
             'expiresAt' => isset($gallerySettings['expiresAt']) ? $gallerySettings['expiresAt'] : null,
             'limitActions' => $gallerySettings['limitActions'],
-            'publicAllowExtend' => !empty($globalSettings['publicAllowExtend'])
+            'publicAllowExtend' => !empty($globalSettings['publicAllowExtend']),
+            'maxImageWidth' => isset($globalSettings['maxImageWidth']) ? (int) $globalSettings['maxImageWidth'] : 0,
+            'maxImageFileSize' => isset($globalSettings['maxImageFileSize']) ? (int) $globalSettings['maxImageFileSize'] : 0,
+            'maxFileSize' => isset($globalSettings['maxFileSize']) ? (int) $globalSettings['maxFileSize'] : 0,
         ],
         'limits' => $limits
     ]);
@@ -791,6 +794,9 @@ function handlePublicConfig() {
             'maxGalleryBytes' => (int) ($settings['publicDefaultMaxGalleryBytes'] ?? 0),
             'maxPhotos' => (int) ($settings['publicDefaultMaxPhotos'] ?? 0),
             'lifetimeDays' => (int) ($settings['publicDefaultLifetimeDays'] ?? 0),
+            'maxImageWidth' => (int) ($settings['maxImageWidth'] ?? 0),
+            'maxImageFileSize' => (int) ($settings['maxImageFileSize'] ?? 0),
+            'maxFileSize' => (int) ($settings['maxFileSize'] ?? 0),
         ]
     ]);
 }

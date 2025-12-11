@@ -108,9 +108,12 @@ if (!$mimeType) {
     $mimeType = isset($mimeTypes[$ext]) ? $mimeTypes[$ext] : 'application/octet-stream';
 }
 
-// Set headers
+// Set headers (inline by default; support forced download via ?download=1)
+$disposition = (isset($_GET['download']) && $_GET['download'] === '1') ? 'attachment' : 'inline';
+$safeName = str_replace(['"', '\\'], '', $filename);
 header('Content-Type: ' . $mimeType);
 header('Content-Length: ' . filesize($filePath));
+header('Content-Disposition: ' . $disposition . '; filename="' . $safeName . '"');
 header('Cache-Control: public, max-age=31536000'); // Cache for 1 year
 header('Expires: ' . gmdate('D, d M Y H:i:s', time() + 31536000) . ' GMT');
 
