@@ -504,6 +504,19 @@ button, .btn-primary, .btn-secondary {
     transition: width 0.3s;
 }
 
+.upload-summary {
+    margin-top: 0.5rem;
+    font-weight: 600;
+}
+
+.upload-summary.success {
+    color: var(--success);
+}
+
+.upload-summary.error {
+    color: var(--error);
+}
+
 /* Gallery Grid */
 .gallery-grid {
     display: grid;

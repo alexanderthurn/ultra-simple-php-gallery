@@ -122,6 +122,7 @@ window.addEventListener('DOMContentLoaded', () => {
             if (uploadArea) uploadArea.style.display = 'none';
             if (closeUploadBtn) closeUploadBtn.style.display = 'none';
             if (uploadBtn) uploadBtn.style.display = 'block';
+        if (uploadArea) uploadArea.classList.remove('keep-open', 'is-uploading');
         });
     }
     
@@ -369,9 +370,12 @@ async function loadGallery(galleryName, dir = '', view = currentView) {
     currentView = view === 'flat' ? 'flat' : 'dir';
     viewerPassword = sessionStorage.getItem(`gallery_view_password_${galleryName}`) || '';
     // reset upload UI early; will re-show if allowed
+    const keepUploadAreaOpen = uploadArea?.classList.contains('keep-open') || uploadArea?.classList.contains('is-uploading');
     if (uploadBtn) uploadBtn.style.display = 'none';
-    if (uploadArea) uploadArea.style.display = 'none';
-    if (closeUploadBtn) closeUploadBtn.style.display = 'none';
+    if (uploadArea && !keepUploadAreaOpen) uploadArea.style.display = 'none';
+    if (closeUploadBtn) {
+        closeUploadBtn.style.display = keepUploadAreaOpen ? 'block' : 'none';
+    }
     if (galleryTitle) {
         galleryTitle.textContent = galleryName;
         galleryTitle.style.display = 'block';
@@ -454,9 +458,18 @@ async function loadGallery(galleryName, dir = '', view = currentView) {
 
             if (galleryInfo) galleryInfo.style.display = 'flex';
             
-            // Reset upload area visibility on gallery load
-            if (uploadArea) uploadArea.style.display = 'none';
-            if (closeUploadBtn) closeUploadBtn.style.display = 'none';
+            // Respect open upload area so progress/results stay visible
+            if (uploadArea) {
+                if (keepUploadAreaOpen) {
+                    uploadArea.style.display = 'block';
+                } else {
+                    uploadArea.style.display = 'none';
+                    uploadArea.classList.remove('keep-open', 'is-uploading');
+                }
+            }
+            if (closeUploadBtn) {
+                closeUploadBtn.style.display = keepUploadAreaOpen ? 'block' : 'none';
+            }
         } else {
             showError(data.error || 'Failed to load gallery');
             if (galleryGrid) galleryGrid.innerHTML = '';
@@ -707,6 +720,7 @@ if (uploadBtn) {
         // User is logged in, show upload area
         if (uploadArea) {
             uploadArea.style.display = 'block';
+            uploadArea.classList.add('keep-open');
             if (closeUploadBtn) closeUploadBtn.style.display = 'block';
             if (uploadBtn) uploadBtn.style.display = 'none';
             // Scroll to upload area
@@ -742,6 +756,20 @@ function applyView(view) {
     updateViewToggleLabel();
     pushStateWithParams();
     loadGallery(currentGallery, currentDir, currentView);
+}
+
+function userCanUpload() {
+    const isEditProtected = galleryHasEditPassword;
+    return hasViewAccess && (!isEditProtected || isLoggedIn);
+}
+
+function openUploadAreaForDrag() {
+    if (!uploadArea) return;
+    uploadArea.style.display = 'block';
+    uploadArea.classList.add('keep-open');
+    if (closeUploadBtn) closeUploadBtn.style.display = 'block';
+    if (uploadBtn) uploadBtn.style.display = 'none';
+    uploadArea.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 function updateViewToggleLabel() {
@@ -808,6 +836,37 @@ if (uploadDropzone) {
         }
     });
 }
+
+// Global drag & drop to start uploads anywhere on the page
+document.addEventListener('dragover', (e) => {
+    if (!e.dataTransfer) return;
+    e.preventDefault();
+    if (!currentGallery || !userCanUpload()) return;
+    if (uploadDropzone && (uploadDropzone === e.target || uploadDropzone.contains(e.target))) return;
+    if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
+    openUploadAreaForDrag();
+});
+
+document.addEventListener('drop', (e) => {
+    if (!e.dataTransfer) return;
+    e.preventDefault();
+    if (!currentGallery || !userCanUpload()) return;
+    if (uploadDropzone && (uploadDropzone === e.target || uploadDropzone.contains(e.target))) return;
+    openUploadAreaForDrag();
+    if (uploadDropzone) uploadDropzone.style.borderColor = 'var(--border)';
+    const items = e.dataTransfer?.items;
+    if (items && items.length > 0) {
+        extractFilesFromItems(items)
+            .then((files) => uploadFiles(files))
+            .catch((err) => {
+                console.error('Global drop parsing failed:', err);
+                const fallback = Array.from(e.dataTransfer.files || []);
+                uploadFiles(fallback);
+            });
+    } else if (e.dataTransfer?.files?.length) {
+        uploadFiles(Array.from(e.dataTransfer.files));
+    }
+});
 
 if (uploadFilesBtn) {
     uploadFilesBtn.addEventListener('click', (e) => {
@@ -926,20 +985,44 @@ async function uploadFiles(files) {
         return;
     }
     
-    if (uploadArea) uploadArea.style.display = 'block';
+    if (!files || files.length === 0) {
+        return;
+    }
+
+    if (uploadArea) {
+        uploadArea.style.display = 'block';
+        uploadArea.classList.add('keep-open', 'is-uploading');
+        uploadArea.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    if (closeUploadBtn) closeUploadBtn.style.display = 'block';
+    if (uploadBtn) uploadBtn.style.display = 'none';
     if (uploadProgress) uploadProgress.innerHTML = '';
+    
+    const uploadResults = [];
     
     for (const entry of files) {
         const file = entry.file ? entry.file : entry;
         const relativePath = normalizeRelativePath(entry.path || file.webkitRelativePath || file.name);
-        await uploadFile(file, relativePath);
+        const result = await uploadFile(file, relativePath);
+        uploadResults.push(result);
     }
     
+    if (uploadArea) uploadArea.classList.remove('is-uploading');
+
     // Reload gallery after uploads complete
-    setTimeout(() => {
-        loadGallery(currentGallery);
-        if (uploadArea) uploadArea.style.display = 'none';
-    }, 1000);
+    await loadGallery(currentGallery, currentDir, currentView);
+
+    // Show a concise summary below the progress list
+    if (uploadProgress && uploadResults.length > 0) {
+        const successCount = uploadResults.filter(r => r.success).length;
+        const summary = document.createElement('div');
+        const allSuccess = successCount === uploadResults.length;
+        summary.className = `upload-summary ${allSuccess ? 'success' : 'error'}`;
+        summary.textContent = allSuccess
+            ? `Uploaded ${uploadResults.length} file${uploadResults.length > 1 ? 's' : ''} successfully.`
+            : `Uploaded ${successCount}/${uploadResults.length} files. Check errors above.`;
+        uploadProgress.appendChild(summary);
+    }
 }
 
 async function uploadFile(file, relativePath) {
@@ -966,7 +1049,7 @@ async function uploadFile(file, relativePath) {
     
     item.appendChild(name);
     item.appendChild(progressBar);
-    uploadProgress.appendChild(item);
+    if (uploadProgress) uploadProgress.appendChild(item);
     
     try {
         let fileToUpload = file;
@@ -980,54 +1063,66 @@ async function uploadFile(file, relativePath) {
         formData.append('file', fileToUpload);
         formData.append('path', safePath);
         
-        const xhr = new XMLHttpRequest();
-        
-        xhr.upload.addEventListener('progress', (e) => {
-            if (e.lengthComputable) {
-                const percent = (e.loaded / e.total) * 100;
-                progressFill.style.width = percent + '%';
-            }
-        });
-        
-        xhr.addEventListener('load', () => {
-            if (xhr.status === 200) {
-                if (progressFill) progressFill.style.width = '100%';
-                if (item) item.style.opacity = '0.5';
-            } else {
-                const response = JSON.parse(xhr.responseText);
-                if (name) {
-                    name.textContent = `${file.name} - Error: ${response.error || 'Upload failed'}`;
-                    name.style.color = 'var(--error)';
+        return await new Promise((resolve) => {
+            const xhr = new XMLHttpRequest();
+            
+            xhr.upload.addEventListener('progress', (e) => {
+                if (e.lengthComputable) {
+                    const percent = (e.loaded / e.total) * 100;
+                    progressFill.style.width = percent + '%';
                 }
-                
-                // If unauthorized, logout
-                if (xhr.status === 401) {
-                    logout();
-                    alert('Password invalid. Please login again.');
+            });
+            
+            xhr.addEventListener('load', () => {
+                if (xhr.status === 200) {
+                    if (progressFill) progressFill.style.width = '100%';
+                    if (item) item.style.opacity = '0.5';
+                    resolve({ success: true });
+                } else {
+                    let response = {};
+                    try {
+                        response = JSON.parse(xhr.responseText || '{}');
+                    } catch (err) {
+                        // ignore parse error; will fallback to generic message
+                    }
+                    const errorMsg = response.error || 'Upload failed';
+                    if (name) {
+                        name.textContent = `${file.name} - Error: ${errorMsg}`;
+                        name.style.color = 'var(--error)';
+                    }
+                    
+                    // If unauthorized, logout
+                    if (xhr.status === 401) {
+                        logout();
+                        alert('Password invalid. Please login again.');
+                    }
+                    resolve({ success: false, error: errorMsg });
                 }
+            });
+            
+            xhr.addEventListener('error', () => {
+                name.textContent = `${file.name} - Upload failed`;
+                name.style.color = 'var(--error)';
+                resolve({ success: false, error: 'Upload failed' });
+            });
+            
+            // Only include password parameter if gallery has password
+            let uploadUrl = `api/index.php?action=upload&gallery=${encodeURIComponent(currentGallery)}`;
+            if (galleryHasViewPassword && viewerPassword) {
+                uploadUrl += `&viewPassword=${encodeURIComponent(viewerPassword)}`;
             }
+            if (galleryHasPassword && galleryPassword) {
+                uploadUrl += `&password=${encodeURIComponent(galleryPassword)}`;
+            }
+            xhr.open('POST', uploadUrl);
+            xhr.send(formData);
         });
-        
-        xhr.addEventListener('error', () => {
-            name.textContent = `${file.name} - Upload failed`;
-            name.style.color = 'var(--error)';
-        });
-        
-        // Only include password parameter if gallery has password
-        let uploadUrl = `api/index.php?action=upload&gallery=${encodeURIComponent(currentGallery)}`;
-        if (galleryHasViewPassword && viewerPassword) {
-            uploadUrl += `&viewPassword=${encodeURIComponent(viewerPassword)}`;
-        }
-        if (galleryHasPassword && galleryPassword) {
-            uploadUrl += `&password=${encodeURIComponent(galleryPassword)}`;
-        }
-        xhr.open('POST', uploadUrl);
-        xhr.send(formData);
         
     } catch (error) {
         console.error('Upload error:', error);
         name.textContent = `${file.name} - Error: ${error.message}`;
         name.style.color = 'var(--error)';
+        return { success: false, error: error.message };
     }
 }
 
