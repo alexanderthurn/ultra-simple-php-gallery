@@ -594,8 +594,8 @@ button, .btn-primary, .btn-secondary {
     height: 16px;
 }
 
-/* Always show text label for directory download button */
-.directory-download .download-label {
+.directory-download:hover .download-label,
+.directory-download:focus-visible .download-label {
     max-width: 180px;
     opacity: 1;
     margin-left: 0.2rem;
