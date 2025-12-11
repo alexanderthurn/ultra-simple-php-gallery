@@ -916,7 +916,7 @@ document.addEventListener('drop', (e) => {
     }
 });
 
-function showConflictResolver(conflicts) {
+function showConflictResolver(conflicts, totalCount = 0) {
     return new Promise((resolve, reject) => {
         if (!uploadConflictModal || !uploadConflictList || !uploadConflictConfirm || !uploadConflictCancel) {
             resolve({});
@@ -925,6 +925,15 @@ function showConflictResolver(conflicts) {
 
         uploadConflictList.innerHTML = '';
         const selects = [];
+
+        const heading = uploadConflictModal.querySelector('.upload-conflict-headings h4');
+        const sub = uploadConflictModal.querySelector('.upload-conflict-headings p');
+        if (heading) {
+            heading.textContent = `Duplicates found (${conflicts.length}${totalCount ? ` / ${totalCount} files` : ''})`;
+        }
+        if (sub) {
+            sub.textContent = `${conflicts.length} duplicate${conflicts.length === 1 ? '' : 's'} out of ${totalCount || conflicts.length} files. Choose what to do before uploading.`;
+        }
 
         conflicts.forEach((conflict) => {
             const item = document.createElement('div');
@@ -1128,10 +1137,7 @@ async function uploadFiles(files) {
     const preparedEntries = files.map((entry) => {
         const file = entry.file ? entry.file : entry;
         const relativePath = normalizeRelativePath(entry.path || file.webkitRelativePath || file.name);
-        const incomingPath = normalizeRelativePath(relativePath);
-        const safePath = baseDir && !incomingPath.startsWith(baseDir + '/')
-            ? normalizeRelativePath(`${baseDir}/${incomingPath}`)
-            : incomingPath;
+        const safePath = computeSafePath(relativePath, baseDir);
         const conflict = existingPaths.has(safePath);
         return { file, relativePath, safePath, conflict };
     });
@@ -1141,7 +1147,7 @@ async function uploadFiles(files) {
 
     if (conflicts.length > 0) {
         try {
-            conflictChoices = await showConflictResolver(conflicts);
+            conflictChoices = await showConflictResolver(conflicts, preparedEntries.length);
         } catch (err) {
             // User cancelled
             if (uploadArea) uploadArea.classList.remove('is-uploading');
@@ -1152,7 +1158,7 @@ async function uploadFiles(files) {
 
     for (const entry of preparedEntries) {
         const choice = conflictChoices[entry.safePath] || (entry.conflict ? 'add' : 'add');
-        const result = await uploadFile(entry.file, entry.relativePath, choice);
+        const result = await uploadFile(entry.file, entry.safePath, choice);
         uploadResults.push(result);
     }
     
@@ -1194,12 +1200,8 @@ async function uploadFile(
     relativePath,
     conflictMode = 'add'
 ) {
-    const incomingPath = normalizeRelativePath(relativePath || file.webkitRelativePath || file.name);
     const baseDir = currentDir ? normalizeRelativePath(currentDir) : '';
-    let safePath = incomingPath;
-    if (baseDir && !incomingPath.startsWith(baseDir + '/')) {
-        safePath = normalizeRelativePath(`${baseDir}/${incomingPath}`);
-    }
+    const safePath = computeSafePath(relativePath || file.webkitRelativePath || file.name, baseDir);
     
     const item = document.createElement('div');
     item.className = 'upload-item';
