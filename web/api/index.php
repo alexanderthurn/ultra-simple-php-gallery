@@ -815,14 +815,27 @@ function handleExtendGallery() {
         return;
     }
 
-    $settings = loadGallerySettings($gallery);
+    $globalSettings = getSettings();
+    // Load with admin source to keep existing per-gallery data intact
+    $settings = loadGallerySettings($gallery, 'admin', $globalSettings);
+
+    // Fallback for older public shares where lifetime was not stored
     $lifetime = isset($settings['lifetimeDays']) ? (int) $settings['lifetimeDays'] : 0;
+    if ($lifetime <= 0) {
+        $fallbackLifetime = (int) ($globalSettings['publicDefaultLifetimeDays'] ?? 0);
+        if ($fallbackLifetime > 0) {
+            $lifetime = $fallbackLifetime;
+            $settings['lifetimeDays'] = $fallbackLifetime;
+        }
+    }
+
     if ($lifetime <= 0) {
         http_response_code(400);
         echo json_encode(['error' => 'Lifetime not configured for this gallery']);
         return;
     }
 
+    // Extend from "today" using the configured lifetime
     $expiresAt = date('c', strtotime('+' . $lifetime . ' days'));
     $settings['expiresAt'] = $expiresAt;
     if (empty($settings['originalCreatedAt'])) {

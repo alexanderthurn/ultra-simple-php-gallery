@@ -771,6 +771,7 @@ function displayGalleries(galleries) {
 
         header.addEventListener('click', (event) => {
             if (name.contains(event.target)) return;
+            event.stopPropagation(); // prevent bubbling to card click which would toggle twice
             toggleDetails();
         });
 

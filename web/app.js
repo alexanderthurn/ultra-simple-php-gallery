@@ -875,7 +875,7 @@ function showNeedMoreDialog(actionsOverride) {
     if (!needMoreModal || !needMoreModalActions || !needMoreModalDesc) return;
     const modalTitle = needMoreModal.querySelector('h3');
     if (modalTitle) modalTitle.textContent = 'Need more?';
-    needMoreModalDesc.textContent = 'You can contact the admin to get a higher data limit. If you just want to extend the expiry date, click the button "Extend".';
+    needMoreModalDesc.textContent = 'You can contact the admin to get your own custom share name, more data, password protection for viewers, readonly mode and more. If you just want to extend the expiry date, click the button "Extend".';
     needMoreModalActions.innerHTML = '';
     const btnExtend = document.createElement('button');
     btnExtend.className = 'btn-primary';

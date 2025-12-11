@@ -3,5 +3,3 @@
 .password
 *_thumb.*
 web/data/*
-!web/data/norway/
-!web/data/surfcamp/
