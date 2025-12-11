@@ -819,15 +819,10 @@ function handleExtendGallery() {
     // Load with admin source to keep existing per-gallery data intact
     $settings = loadGallerySettings($gallery, 'admin', $globalSettings);
 
-    // Fallback for older public shares where lifetime was not stored
-    $lifetime = isset($settings['lifetimeDays']) ? (int) $settings['lifetimeDays'] : 0;
-    if ($lifetime <= 0) {
-        $fallbackLifetime = (int) ($globalSettings['publicDefaultLifetimeDays'] ?? 0);
-        if ($fallbackLifetime > 0) {
-            $lifetime = $fallbackLifetime;
-            $settings['lifetimeDays'] = $fallbackLifetime;
-        }
-    }
+    // Effective lifetime: prefer per-gallery, but fall back to (or upgrade to) the default for public shares
+    $configuredLifetime = isset($settings['lifetimeDays']) ? (int) $settings['lifetimeDays'] : 0;
+    $defaultLifetime = (int) ($globalSettings['publicDefaultLifetimeDays'] ?? 0);
+    $lifetime = max($configuredLifetime, $defaultLifetime);
 
     if ($lifetime <= 0) {
         http_response_code(400);
@@ -835,8 +830,17 @@ function handleExtendGallery() {
         return;
     }
 
-    // Extend from "today" using the configured lifetime
-    $expiresAt = date('c', strtotime('+' . $lifetime . ' days'));
+    // Use the gallery's creation date to extend by (age + lifetime),
+    // which equals "lifetime from today" while keeping the original start.
+    $createdAtTs = isset($settings['createdAt']) ? strtotime($settings['createdAt']) : time();
+    if ($createdAtTs === false) {
+        $createdAtTs = time();
+    }
+    $ageDays = max(0, floor((time() - $createdAtTs) / 86400));
+    $totalLifetimeDays = $lifetime + $ageDays;
+    $expiresAt = date('c', strtotime('+' . $totalLifetimeDays . ' days', $createdAtTs));
+
+    $settings['lifetimeDays'] = $lifetime;
     $settings['expiresAt'] = $expiresAt;
     if (empty($settings['originalCreatedAt'])) {
         $settings['originalCreatedAt'] = $settings['createdAt'] ?? date('c');
