@@ -528,6 +528,81 @@ button, .btn-primary, .btn-secondary {
     color: var(--error);
 }
 
+.upload-conflict-modal {
+    margin-top: 1rem;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1rem;
+    background: var(--bg-secondary);
+    box-shadow: 0 10px 30px var(--shadow);
+}
+
+.upload-conflict-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.upload-conflict-headings h4 {
+    margin: 0 0 0.25rem 0;
+}
+
+.upload-conflict-headings p {
+    margin: 0;
+    color: var(--text-secondary);
+}
+
+.upload-conflict-list {
+    margin-top: 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.upload-conflict-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.5rem 0.6rem;
+    border-radius: 8px;
+    background: var(--bg-tertiary);
+}
+
+.upload-conflict-name {
+    flex: 1;
+    word-break: break-word;
+    font-weight: 600;
+}
+
+.upload-conflict-actions {
+    margin-top: 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    justify-content: space-between;
+    flex-wrap: wrap;
+}
+
+.upload-conflict-apply {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.upload-conflict-apply select {
+    padding: 0.35rem 0.6rem;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--bg-primary);
+    color: var(--text-primary);
+}
+
+.upload-conflict-buttons {
+    display: flex;
+    gap: 0.5rem;
+}
 /* Gallery Grid */
 .gallery-grid {
     display: grid;

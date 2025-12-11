@@ -94,6 +94,29 @@
                         </button>
                     </div>
                 </div>
+                <div id="upload-conflict-modal" class="upload-conflict-modal" style="display: none;">
+                    <div class="upload-conflict-header">
+                        <div class="upload-conflict-headings">
+                            <h4>Duplicates found</h4>
+                            <p>Select what to do with existing files before uploading.</p>
+                        </div>
+                        <div class="upload-conflict-apply" id="upload-conflict-applyall-block" style="display: none;">
+                            <select id="upload-conflict-applyall-select">
+                                <option value="add">Add as new (rename)</option>
+                                <option value="replace">Replace existing</option>
+                                <option value="skip">Skip</option>
+                            </select>
+                            <button id="upload-conflict-applyall-btn" type="button" class="btn-secondary">Apply to all</button>
+                        </div>
+                    </div>
+                    <div id="upload-conflict-list" class="upload-conflict-list"></div>
+                    <div class="upload-conflict-actions">
+                        <div class="upload-conflict-buttons">
+                            <button id="upload-conflict-cancel" type="button" class="btn-secondary">Cancel</button>
+                            <button id="upload-conflict-confirm" type="button" class="btn-primary">Start upload</button>
+                        </div>
+                    </div>
+                </div>
                 <div id="upload-progress" class="upload-progress"></div>
             </div>
 

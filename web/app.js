@@ -41,6 +41,13 @@ const dirInput = document.getElementById('dir-input');
 const uploadArea = document.getElementById('upload-area');
 const uploadDropzone = document.getElementById('upload-dropzone');
 const uploadProgress = document.getElementById('upload-progress');
+const uploadConflictModal = document.getElementById('upload-conflict-modal');
+const uploadConflictList = document.getElementById('upload-conflict-list');
+const uploadConflictConfirm = document.getElementById('upload-conflict-confirm');
+const uploadConflictCancel = document.getElementById('upload-conflict-cancel');
+const uploadConflictApplyAllBlock = document.getElementById('upload-conflict-applyall-block');
+const uploadConflictApplyAllSelect = document.getElementById('upload-conflict-applyall-select');
+const uploadConflictApplyAllBtn = document.getElementById('upload-conflict-applyall-btn');
 const uploadFilesBtn = document.getElementById('upload-files-btn');
 const uploadFolderBtn = document.getElementById('upload-folder-btn');
 const viewToggleBtn = document.getElementById('view-toggle-btn');
@@ -787,6 +794,7 @@ function openUploadAreaForDrag() {
     if (uploadBtn) uploadBtn.style.display = 'none';
     uploadArea.scrollIntoView({ behavior: 'smooth', block: 'start' });
     if (uploadDropzone) uploadDropzone.style.display = 'block';
+    if (uploadConflictModal) uploadConflictModal.style.display = 'none';
 }
 
 let lastUploadPermissionNotice = 0;
@@ -907,6 +915,70 @@ document.addEventListener('drop', (e) => {
         uploadFiles(Array.from(e.dataTransfer.files));
     }
 });
+
+function showConflictResolver(conflicts) {
+    return new Promise((resolve, reject) => {
+        if (!uploadConflictModal || !uploadConflictList || !uploadConflictConfirm || !uploadConflictCancel) {
+            resolve({});
+            return;
+        }
+
+        uploadConflictList.innerHTML = '';
+        const selects = [];
+
+        conflicts.forEach((conflict) => {
+            const item = document.createElement('div');
+            item.className = 'upload-conflict-item';
+
+            const name = document.createElement('div');
+            name.className = 'upload-conflict-name';
+            name.textContent = conflict.safePath || conflict.relativePath || conflict.file?.name || 'Existing file';
+
+            const select = document.createElement('select');
+            select.innerHTML = `
+                <option value="add">Add as new (rename)</option>
+                <option value="replace">Replace existing</option>
+                <option value="skip">Skip</option>
+            `;
+            select.value = 'add';
+            select.dataset.path = conflict.safePath;
+
+            item.appendChild(name);
+            item.appendChild(select);
+            uploadConflictList.appendChild(item);
+            selects.push(select);
+        });
+
+        if (uploadConflictApplyAllBlock) {
+            uploadConflictApplyAllBlock.style.display = conflicts.length > 1 ? 'flex' : 'none';
+        }
+
+        if (uploadConflictApplyAllBtn && uploadConflictApplyAllSelect) {
+            uploadConflictApplyAllBtn.onclick = () => {
+                const choice = uploadConflictApplyAllSelect.value || 'add';
+                selects.forEach((sel) => sel.value = choice);
+            };
+        }
+
+        uploadConflictConfirm.onclick = () => {
+            const choices = {};
+            selects.forEach((sel) => {
+                const path = sel.dataset.path;
+                const value = sel.value || 'add';
+                if (path) choices[path] = value;
+            });
+            uploadConflictModal.style.display = 'none';
+            resolve(choices);
+        };
+
+        uploadConflictCancel.onclick = () => {
+            uploadConflictModal.style.display = 'none';
+            reject(new Error('cancelled'));
+        };
+
+        uploadConflictModal.style.display = 'block';
+    });
+}
 
 if (uploadFilesBtn) {
     uploadFilesBtn.addEventListener('click', (e) => {
@@ -1038,22 +1110,49 @@ async function uploadFiles(files) {
     if (uploadBtn) uploadBtn.style.display = 'none';
     if (uploadProgress) uploadProgress.innerHTML = '';
     if (uploadDropzone) uploadDropzone.style.display = 'none'; // hide dropzone after starting upload
-    
     const uploadResults = [];
-    // per-session conflict handling
-    let conflictChoice = null; // 'replace' | 'add' | 'skip'
-    let conflictApplyAll = false;
-    
-    for (const entry of files) {
+
+    // Build safe paths and detect duplicates before uploading
+    const baseDir = currentDir ? normalizeRelativePath(currentDir) : '';
+
+    // Fetch a flat list to catch duplicates in subfolders, not just the current view
+    let existingPaths = new Set((currentFiles || []).map(f => normalizeRelativePath(f.path)));
+    try {
+        const flatPaths = await fetchExistingPathsForConflicts();
+        if (flatPaths && flatPaths.size > 0) {
+            existingPaths = flatPaths;
+        }
+    } catch (err) {
+        console.warn('Conflict pre-check fallback to current view:', err);
+    }
+    const preparedEntries = files.map((entry) => {
         const file = entry.file ? entry.file : entry;
         const relativePath = normalizeRelativePath(entry.path || file.webkitRelativePath || file.name);
-        const result = await uploadFile(file, relativePath, () => ({
-            choice: conflictChoice,
-            applyAll: conflictApplyAll
-        }), (decision) => {
-            conflictChoice = decision.choice;
-            conflictApplyAll = decision.applyAll;
-        });
+        const incomingPath = normalizeRelativePath(relativePath);
+        const safePath = baseDir && !incomingPath.startsWith(baseDir + '/')
+            ? normalizeRelativePath(`${baseDir}/${incomingPath}`)
+            : incomingPath;
+        const conflict = existingPaths.has(safePath);
+        return { file, relativePath, safePath, conflict };
+    });
+
+    const conflicts = preparedEntries.filter(e => e.conflict);
+    let conflictChoices = {};
+
+    if (conflicts.length > 0) {
+        try {
+            conflictChoices = await showConflictResolver(conflicts);
+        } catch (err) {
+            // User cancelled
+            if (uploadArea) uploadArea.classList.remove('is-uploading');
+            if (uploadDropzone) uploadDropzone.style.display = 'block';
+            return;
+        }
+    }
+
+    for (const entry of preparedEntries) {
+        const choice = conflictChoices[entry.safePath] || (entry.conflict ? 'add' : 'add');
+        const result = await uploadFile(entry.file, entry.relativePath, choice);
         uploadResults.push(result);
     }
     
@@ -1075,11 +1174,25 @@ async function uploadFiles(files) {
     }
 }
 
+async function fetchExistingPathsForConflicts() {
+    if (!currentGallery) return new Set();
+    const viewPasswordParam = viewerPassword ? `&viewPassword=${encodeURIComponent(viewerPassword)}` : '';
+    const url = `api/index.php?action=list&gallery=${encodeURIComponent(currentGallery)}&view=flat${viewPasswordParam}`;
+    const resp = await fetch(url);
+    if (!resp.ok) return new Set();
+    const data = await resp.json();
+    if (!data || !data.files) return new Set();
+    const set = new Set();
+    data.files.forEach(f => {
+        if (f.path) set.add(normalizeRelativePath(f.path));
+    });
+    return set;
+}
+
 async function uploadFile(
     file,
     relativePath,
-    getConflictState = () => ({ choice: null, applyAll: false }),
-    setConflictState = () => {}
+    conflictMode = 'add'
 ) {
     const incomingPath = normalizeRelativePath(relativePath || file.webkitRelativePath || file.name);
     const baseDir = currentDir ? normalizeRelativePath(currentDir) : '';
@@ -1106,28 +1219,6 @@ async function uploadFile(
     item.appendChild(progressBar);
     if (uploadProgress) uploadProgress.appendChild(item);
     
-    const resolveConflict = () => {
-        const existingChoice = getConflictState()?.choice || '';
-        const input = prompt(
-            `File "${file.name}" already exists. Choose an action:\n- replace (r)\n- add as new (a)\n- skip (s)`,
-            existingChoice || 'add'
-        );
-        if (!input) {
-            return { choice: 'skip', applyAll: false };
-        }
-        const normalized = input.toLowerCase().trim();
-        let choice = 'add';
-        if (normalized === 'r' || normalized === 'replace') {
-            choice = 'replace';
-        } else if (normalized === 's' || normalized === 'skip') {
-            choice = 'skip';
-        } else {
-            choice = 'add';
-        }
-        const applyAll = confirm('Apply this choice to all remaining conflicts?');
-        return { choice, applyAll };
-    };
-    
     try {
         let fileToUpload = file;
         
@@ -1136,11 +1227,11 @@ async function uploadFile(
             fileToUpload = await compressImage(file);
         }
         
-        const sendUpload = (conflictMode) => {
+        const sendUpload = (modeToUse) => {
             const formData = new FormData();
             formData.append('file', fileToUpload);
             formData.append('path', safePath);
-            formData.append('conflict', conflictMode);
+            formData.append('conflict', modeToUse);
             
             return new Promise((resolve) => {
             const xhr = new XMLHttpRequest();
@@ -1158,11 +1249,6 @@ async function uploadFile(
                     response = JSON.parse(xhr.responseText || '{}');
                 } catch (err) {
                     // ignore parse error; will fallback to generic message
-                }
-                
-                if (response.conflict) {
-                    resolve({ success: false, conflict: true, response });
-                    return;
                 }
                 
                 if (xhr.status === 200) {
@@ -1212,40 +1298,16 @@ async function uploadFile(
         });
         };
         
-        // Determine conflict mode to use
-        const conflictState = getConflictState();
-        const initialConflictMode = conflictState && conflictState.applyAll && conflictState.choice
-            ? conflictState.choice
-            : 'ask';
-        
-        let attemptMode = initialConflictMode;
-        while (true) {
-            const result = await sendUpload(attemptMode);
-            if (!result.conflict) {
-                return result;
+        const modeToUse = conflictMode || 'add';
+        if (modeToUse === 'skip') {
+            if (name) {
+                name.textContent = `${file.name} - Skipped (exists)`;
+                name.style.color = 'var(--text-secondary)';
             }
-            
-            // resolve conflict interactively
-            const decision = resolveConflict();
-            if (!decision) {
-                return { success: false, error: 'Conflict unresolved' };
-            }
-            if (decision.applyAll) {
-                setConflictState({ choice: decision.choice, applyAll: true });
-            } else {
-                setConflictState({ choice: decision.choice, applyAll: false });
-            }
-            
-            if (decision.choice === 'skip') {
-                if (name) {
-                    name.textContent = `${file.name} - Skipped (exists)`;
-                    name.style.color = 'var(--text-secondary)';
-                }
-                return { success: true, skipped: true };
-            }
-            
-            attemptMode = decision.choice === 'replace' ? 'replace' : 'add';
+            return { success: true, skipped: true };
         }
+
+        return await sendUpload(modeToUse);
         
     } catch (error) {
         console.error('Upload error:', error);
