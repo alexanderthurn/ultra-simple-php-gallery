@@ -19,7 +19,7 @@ let publicConfig = null;
 let contactEmail = '';
 let nameSuggestions = [];
 let suggestionIndex = 0;
-const DEFAULT_PAGE_TITLE = 'Share';
+const DEFAULT_PAGE_TITLE = 'Mops';
 const DEFAULT_PAGE_DESC = 'Lets share some photos';
 
 // DOM Elements
@@ -31,6 +31,7 @@ const headerLeft = document.getElementById('header-left');
 const headerActions = document.getElementById('header-actions');
 const headerRight = document.getElementById('header-right');
 const headerLogo = document.getElementById('header-logo');
+const shareBtn = document.getElementById('share-btn');
 const loginToggle = document.getElementById('login-toggle');
 const loginWrapper = document.getElementById('login-wrapper');
 const headerLoginForm = document.getElementById('login-wrapper');
@@ -86,6 +87,10 @@ const needMoreModal = document.getElementById('need-more-modal');
 const needMoreModalActions = document.getElementById('need-more-modal-actions');
 const needMoreModalClose = document.getElementById('need-more-modal-close');
 const needMoreModalDesc = document.getElementById('need-more-modal-desc');
+const shareModal = document.getElementById('share-modal');
+const shareModalClose = document.getElementById('share-modal-close');
+const shareLinkInput = document.getElementById('share-link-input');
+const copyShareLinkBtn = document.getElementById('copy-share-link');
 const publicCreate = document.getElementById('public-create');
 const publicCreateToggle = document.getElementById('public-create-toggle');
 const publicCreateForm = document.getElementById('public-create-form');
@@ -184,6 +189,26 @@ window.addEventListener('DOMContentLoaded', () => {
         needMoreModalClose.addEventListener('click', () => {
             hideNeedMoreDialog();
         });
+    }
+
+    if (shareBtn) {
+        shareBtn.addEventListener('click', openShareModal);
+    }
+
+    if (shareModalClose) {
+        shareModalClose.addEventListener('click', closeShareModal);
+    }
+
+    if (shareModal) {
+        shareModal.addEventListener('click', (e) => {
+            if (e.target === shareModal) {
+                closeShareModal();
+            }
+        });
+    }
+
+    if (copyShareLinkBtn) {
+        copyShareLinkBtn.addEventListener('click', copyShareLink);
     }
     
     // Close upload area button
@@ -372,6 +397,7 @@ function updateLoginUI() {
         if (headerRight) headerRight.style.display = 'none';
         if (headerActions) headerActions.style.display = 'none';
         if (loginToggle) loginToggle.style.display = 'none';
+        if (shareBtn) shareBtn.style.display = 'none';
         return;
     }
     
@@ -397,6 +423,7 @@ function updateLoginUI() {
         }
         if (loggedInWrapper) loggedInWrapper.style.display = 'none';
         if (headerActions) headerActions.style.display = 'none';
+        if (shareBtn) shareBtn.style.display = 'none';
         updateDeleteButtonsVisibility();
         return;
     }
@@ -607,6 +634,7 @@ async function loadGallery(galleryName, dir = '', view = currentView) {
     if (closeUploadBtn) {
         closeUploadBtn.style.display = keepUploadAreaOpen ? 'block' : 'none';
     }
+    if (shareBtn) shareBtn.style.display = 'none';
     if (galleryTitle) {
         const titleText = currentDir || currentGallery || 'mops';
         galleryTitle.textContent = titleText;
@@ -699,6 +727,9 @@ async function loadGallery(galleryName, dir = '', view = currentView) {
             if (downloadZipBtn) {
                 downloadZipBtn.style.display = hasUserFiles ? 'inline-flex' : 'none';
             }
+            if (shareBtn) {
+                shareBtn.style.display = hasUserFiles ? 'inline-flex' : 'none';
+            }
             displayGallery(userFiles, hasDirectories);
             updateBreadcrumb(hasDirectories);
             updateViewToggleLabel();
@@ -728,6 +759,7 @@ async function loadGallery(galleryName, dir = '', view = currentView) {
             if (brandTitle) brandTitle.style.display = 'none';
             if (headerLeft) headerLeft.style.display = 'none';
             if (headerLogo) headerLogo.style.display = 'none';
+            if (shareBtn) shareBtn.style.display = 'none';
             currentSettings = null;
             currentLimits = null;
             updateLimitBanner();
@@ -748,6 +780,7 @@ async function loadGallery(galleryName, dir = '', view = currentView) {
         if (brandTitle) brandTitle.style.display = 'none';
         if (headerLeft) headerLeft.style.display = 'none';
         if (headerLogo) headerLogo.style.display = 'none';
+        if (shareBtn) shareBtn.style.display = 'none';
         currentSettings = null;
         currentLimits = null;
         updateLimitBanner();
@@ -937,6 +970,43 @@ async function extendGalleryLifetime() {
 
 function hideNeedMoreDialog() {
     if (needMoreModal) needMoreModal.style.display = 'none';
+}
+
+function openShareModal() {
+    if (!shareModal || !shareLinkInput) return;
+    const currentLink = window.location.href;
+    shareLinkInput.value = currentLink;
+    shareModal.style.display = 'flex';
+    shareLinkInput.focus();
+    shareLinkInput.select();
+}
+
+function closeShareModal() {
+    if (shareModal) shareModal.style.display = 'none';
+}
+
+async function copyShareLink() {
+    const link = window.location.href;
+    if (shareLinkInput) {
+        shareLinkInput.value = link;
+        shareLinkInput.select();
+    }
+    if (!copyShareLinkBtn) return;
+    try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            await navigator.clipboard.writeText(link);
+        } else if (shareLinkInput) {
+            document.execCommand('copy');
+        }
+        copyShareLinkBtn.textContent = 'Copied!';
+        setTimeout(() => {
+            if (copyShareLinkBtn) {
+                copyShareLinkBtn.textContent = 'Copy link';
+            }
+        }, 1500);
+    } catch (error) {
+        console.error('Failed to copy link', error);
+    }
 }
 
 function showExtendCelebration(expiresAt) {

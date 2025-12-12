@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Share</title>
+    <title>Mops</title>
     <meta name="description" content="Lets share some photos">
-    <meta property="og:title" content="Share">
+    <meta property="og:title" content="Mops">
     <meta property="og:description" content="Lets share some photos">
-    <meta name="twitter:title" content="Share">
+    <meta name="twitter:title" content="Mops">
     <meta name="twitter:description" content="Lets share some photos">
     <link rel="stylesheet" href="style.css">
     <link rel="icon" href="icon.svg" type="image/svg+xml">
@@ -44,6 +44,7 @@
             <div class="header-right" id="header-right" style="display: none;">
                 <button id="login-toggle" class="btn-secondary login-toggle" aria-expanded="false" style="display: none;">Login</button>
                 <div class="header-actions" id="header-actions" style="display: none;">
+                    <button id="share-btn" class="btn-secondary" style="display: none;">Share</button>
                     <button id="upload-btn" class="btn-primary">Upload</button>
                 </div>
                 <form class="login-wrapper" id="login-wrapper" style="display: none;" autocomplete="off">
@@ -73,6 +74,19 @@
                     <h3>Upgrade or Contact</h3>
                     <p id="need-more-modal-desc" class="limit-modal-desc">Choose how to proceed.</p>
                     <div id="need-more-modal-actions" class="limit-modal-actions"></div>
+                </div>
+            </div>
+
+            <div id="share-modal" class="modal" style="display: none;">
+                <div class="modal-content">
+                    <button id="share-modal-close" class="modal-close" aria-label="Close">×</button>
+                    <h3>Share with friends</h3>
+                    <p class="share-desc">Send this link to let others open this gallery.</p>
+                    <div class="input-with-button share-link-row">
+                        <input type="text" id="share-link-input" readonly>
+                        <button id="copy-share-link" class="btn-primary" type="button">Copy link</button>
+                    </div>
+                    <div class="share-hint">The link uses your current page address.</div>
                 </div>
             </div>
 

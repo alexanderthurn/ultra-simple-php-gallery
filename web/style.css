@@ -1398,6 +1398,35 @@ button, .btn-primary, .btn-secondary {
     justify-content: flex-end;
 }
 
+.share-link-row {
+    margin-bottom: 0.5rem;
+    align-items: center;
+}
+
+.share-link-row input {
+    min-width: 0;
+    margin-bottom: 0;
+    border-radius: 12px 0 0 12px;
+    border-right: none;
+}
+
+.share-desc {
+    margin-bottom: 0.5rem;
+}
+
+.share-hint {
+    color: var(--text-secondary);
+    font-size: 0.95rem;
+}
+
+.share-link-row .btn-primary {
+    border-radius: 0 12px 12px 0;
+    height: 45px;
+    padding: 0 0.9rem;
+    box-shadow: none;
+    font-size: 0.95rem;
+}
+
 /* Lightbox */
 .lightbox {
     position: fixed;
