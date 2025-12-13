@@ -1,4 +1,4 @@
-# MOPS – Minimalistic Open Photo Share
+# MOPS – My Own Photo Share
 
 Lightweight self-hosted photo sharing. Upload the `web/` folder to any Apache/PHP host, set an admin password, and start collecting photos from friends with or without upload passwords.
 
