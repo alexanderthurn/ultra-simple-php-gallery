@@ -6,9 +6,9 @@
   
   <path d="M20 50C20 25 30 15 50 15C70 15 80 25 80 50C80 75 75 85 50 85C25 85 20 75 20 50Z" fill="#F2DCB3"/>
 
-  <circle cx="36" cy="48" r="7" fill="#3E3E3E"/>
-  <circle cx="38" cy="46" r="2" fill="white"/> <circle cx="64" cy="48" r="7" fill="#3E3E3E"/>
-  <circle cx="66" cy="46" r="2" fill="white"/> <ellipse cx="50" cy="60" rx="14" ry="9" fill="#3E3E3E"/>
+  <circle id="leftoutereye" cx="36" cy="48" r="7" fill="#3E3E3E"/>
+  <circle id="lefteye" cx="32" cy="48" r="2" fill="white"/> <circle id="rightoutereye" cx="64" cy="48" r="7" fill="#3E3E3E"/>
+  <circle id="righteye" cx="66" cy="46" r="2" fill="white"/> <ellipse cx="50" cy="60" rx="14" ry="9" fill="#3E3E3E"/>
   
   <path d="M45 58L55 58L50 64L45 58Z" fill="black" stroke="black" stroke-width="2" stroke-linejoin="round"/>
   

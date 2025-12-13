@@ -847,6 +847,7 @@ async function loadGallery(galleryName, dir = '', view = currentView) {
     currentDir = normalizeRelativePath(dir || '');
     currentView = view === 'flat' ? 'flat' : 'dir';
     viewerPassword = sessionStorage.getItem(`gallery_view_password_${galleryName}`) || '';
+    
     // reset upload UI early; will re-show if allowed
     const keepUploadAreaOpen = uploadArea?.classList.contains('keep-open') || uploadArea?.classList.contains('is-uploading');
     if (uploadBtn) uploadBtn.style.display = 'none';
@@ -862,8 +863,24 @@ async function loadGallery(galleryName, dir = '', view = currentView) {
     }
     if (brandTitle) brandTitle.style.display = 'flex';
     if (headerLeft) headerLeft.style.display = 'flex';
-    if (headerLogo) headerLogo.style.display = 'block';
+    
+    // Ensure logo is converted to SVG and visible
+    const logoElement = document.getElementById('header-logo');
+    if (logoElement) {
+        if (logoElement.tagName === 'IMG') {
+            convertImgToSvg(logoElement).then(svg => {
+                if (svg) {
+                    svg.style.display = 'block';
+                }
+            });
+        } else {
+            logoElement.style.display = 'block';
+        }
+    }
+    
     if (headerActions) headerActions.style.display = 'flex';
+    // Ensure SVGs are initialized when loading a gallery
+    initEyeTracking();
     if (galleryMeta) galleryMeta.style.display = 'none';
     
     // Hide empty state and gallery selector
@@ -972,6 +989,7 @@ async function loadGallery(galleryName, dir = '', view = currentView) {
             }
         } else {
             showError(data.error || 'Failed to load gallery');
+            currentGallery = ''; // Reset to main page
             if (galleryGrid) galleryGrid.innerHTML = '';
             if (emptyState) emptyState.style.display = 'block';
             if (gallerySelector) gallerySelector.style.display = 'flex';
@@ -989,10 +1007,13 @@ async function loadGallery(galleryName, dir = '', view = currentView) {
             }
             if (headerActions) headerActions.style.display = 'none';
             setPageMetadata();
+            // Ensure SVGs are initialized when returning to main page
+            initEyeTracking();
         }
     } catch (error) {
         console.error('Error loading gallery:', error);
         showError('Failed to load gallery');
+        currentGallery = ''; // Reset to main page
         if (galleryGrid) galleryGrid.innerHTML = '';
         if (emptyState) emptyState.style.display = 'block';
         if (gallerySelector) gallerySelector.style.display = 'flex';
@@ -1010,6 +1031,8 @@ async function loadGallery(galleryName, dir = '', view = currentView) {
         }
         if (headerActions) headerActions.style.display = 'none';
         setPageMetadata();
+        // Ensure SVGs are initialized when returning to main page
+        initEyeTracking();
     }
 }
 
@@ -2493,5 +2516,160 @@ function computeSafePath(relativePath, baseDir = '') {
 function showError(message) {
     // Simple error display - could be enhanced with a toast notification
     console.error(message);
+}
+
+// Eye tracking functionality for the dog SVG
+function convertImgToSvg(img) {
+    if (!img || img.tagName !== 'IMG' || img.dataset.svgConverted === 'true') {
+        return Promise.resolve(null);
+    }
+    
+    return new Promise(async (resolve) => {
+        try {
+            const response = await fetch(img.src);
+            const svgText = await response.text();
+            const parser = new DOMParser();
+            const svgDoc = parser.parseFromString(svgText, 'image/svg+xml');
+            const svgElement = svgDoc.querySelector('svg');
+            
+            if (svgElement && img.parentNode) {
+                img.dataset.svgConverted = 'true';
+                
+                // Copy attributes from img to svg
+                Array.from(img.attributes).forEach(attr => {
+                    if (attr.name !== 'src' && attr.name !== 'alt') {
+                        svgElement.setAttribute(attr.name, attr.value);
+                    }
+                });
+                
+                // Copy computed styles, especially display
+                const imgStyle = window.getComputedStyle(img);
+                // Always set display style explicitly to ensure visibility
+                svgElement.style.display = imgStyle.display || 'block';
+                
+                // Replace img with svg
+                img.parentNode.replaceChild(svgElement, img);
+                
+                setupEyeTracking(svgElement);
+                resolve(svgElement);
+            } else {
+                resolve(null);
+            }
+        } catch (error) {
+            console.error('Error loading SVG:', error);
+            resolve(null);
+        }
+    });
+}
+
+function initEyeTracking() {
+    // Convert all img elements to inline SVG
+    document.querySelectorAll('img[src*="icon.svg"]').forEach(img => {
+        convertImgToSvg(img);
+    });
+    
+    // Setup tracking for existing inline SVGs
+    document.querySelectorAll('svg').forEach(svg => {
+        if (svg.querySelector('#lefteye') && svg.querySelector('#righteye')) {
+            setupEyeTracking(svg);
+        }
+    });
+}
+
+function setupEyeTracking(svg) {
+    if (svg.dataset.eyeTrackingInitialized === 'true') {
+        return;
+    }
+    svg.dataset.eyeTrackingInitialized = 'true';
+    
+    const leftOuterEye = svg.querySelector('#leftoutereye');
+    const leftEye = svg.querySelector('#lefteye');
+    const rightOuterEye = svg.querySelector('#rightoutereye');
+    const rightEye = svg.querySelector('#righteye');
+    
+    if (!leftOuterEye || !leftEye || !rightOuterEye || !rightEye) {
+        return;
+    }
+    
+    const leftOuterCx = parseFloat(leftOuterEye.getAttribute('cx'));
+    const leftOuterCy = parseFloat(leftOuterEye.getAttribute('cy'));
+    const leftOuterR = parseFloat(leftOuterEye.getAttribute('r'));
+    const leftEyeR = parseFloat(leftEye.getAttribute('r'));
+    const leftMaxRadius = leftOuterR - 1 - leftEyeR;
+    
+    const rightOuterCx = parseFloat(rightOuterEye.getAttribute('cx'));
+    const rightOuterCy = parseFloat(rightOuterEye.getAttribute('cy'));
+    const rightOuterR = parseFloat(rightOuterEye.getAttribute('r'));
+    const rightEyeR = parseFloat(rightEye.getAttribute('r'));
+    const rightMaxRadius = rightOuterR - 1 - rightEyeR;
+    
+    function updateEyes(e) {
+        const svgRect = svg.getBoundingClientRect();
+        const viewBox = svg.viewBox.baseVal;
+        
+        let mouseX, mouseY;
+        if (svg.createSVGPoint) {
+            const point = svg.createSVGPoint();
+            point.x = e.clientX;
+            point.y = e.clientY;
+            const ctm = svg.getScreenCTM();
+            if (ctm) {
+                const inverseCTM = ctm.inverse();
+                const svgPoint = point.matrixTransform(inverseCTM);
+                mouseX = svgPoint.x;
+                mouseY = svgPoint.y;
+            } else {
+                const svgWidth = viewBox.width || svgRect.width;
+                const svgHeight = viewBox.height || svgRect.height;
+                mouseX = ((e.clientX - svgRect.left) / svgRect.width) * svgWidth;
+                mouseY = ((e.clientY - svgRect.top) / svgRect.height) * svgHeight;
+            }
+        } else {
+            const svgWidth = viewBox.width || svgRect.width;
+            const svgHeight = viewBox.height || svgRect.height;
+            mouseX = ((e.clientX - svgRect.left) / svgRect.width) * svgWidth;
+            mouseY = ((e.clientY - svgRect.top) / svgRect.height) * svgHeight;
+        }
+        
+        // Update left eye
+        const leftDx = mouseX - leftOuterCx;
+        const leftDy = mouseY - leftOuterCy;
+        const leftDistance = Math.sqrt(leftDx * leftDx + leftDy * leftDy);
+        
+        if (leftDistance > 0) {
+            const leftAngle = Math.atan2(leftDy, leftDx);
+            const leftMoveDistance = Math.min(leftDistance, leftMaxRadius);
+            leftEye.setAttribute('cx', leftOuterCx + Math.cos(leftAngle) * leftMoveDistance);
+            leftEye.setAttribute('cy', leftOuterCy + Math.sin(leftAngle) * leftMoveDistance);
+        }
+        
+        // Update right eye (180 degrees offset for cross-eyed effect)
+        const rightDx = mouseX - rightOuterCx;
+        const rightDy = mouseY - rightOuterCy;
+        const rightDistance = Math.sqrt(rightDx * rightDx + rightDy * rightDy);
+        
+        if (rightDistance > 0) {
+            const rightAngle = Math.atan2(rightDy, rightDx) + Math.PI;
+            const rightMoveDistance = Math.min(rightDistance, rightMaxRadius);
+            rightEye.setAttribute('cx', rightOuterCx + Math.cos(rightAngle) * rightMoveDistance);
+            rightEye.setAttribute('cy', rightOuterCy + Math.sin(rightAngle) * rightMoveDistance);
+        }
+    }
+    
+    document.addEventListener('mousemove', updateEyes);
+    svg.addEventListener('mouseenter', updateEyes);
+    svg.addEventListener('mouseleave', () => {
+        leftEye.setAttribute('cx', leftOuterCx);
+        leftEye.setAttribute('cy', leftOuterCy);
+        rightEye.setAttribute('cx', rightOuterCx);
+        rightEye.setAttribute('cy', rightOuterCy);
+    });
+}
+
+// Initialize eye tracking when DOM is ready
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initEyeTracking);
+} else {
+    initEyeTracking();
 }
 
