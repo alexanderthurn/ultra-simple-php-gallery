@@ -672,9 +672,9 @@ function updateEditorPasswordLabel() {
     const label = document.getElementById('public-create-editor-password-label');
     if (label && publicCreateViewerUploads) {
         if (publicCreateViewerUploads.checked) {
-            label.textContent = 'People need a special password to delete photos';
+            label.textContent = 'Special password required to delete photos/videos';
         } else {
-            label.textContent = 'People need a special password to upload photos/delete';
+            label.textContent = 'Special password to upload or delete photos/videos';
         }
     }
 }
