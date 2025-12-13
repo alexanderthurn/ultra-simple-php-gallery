@@ -207,6 +207,18 @@ body {
     box-shadow: 0 10px 30px var(--glow);
 }
 
+.login-help {
+    margin-top: 1rem;
+    text-align: center;
+    color: var(--text-secondary);
+}
+
+.login-help small {
+    font-size: 0.85rem;
+    line-height: 1.5;
+    display: block;
+}
+
 .error-message {
     margin-top: 1rem;
     padding: 0.75rem;
