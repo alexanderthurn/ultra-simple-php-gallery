@@ -105,10 +105,12 @@ const publicCreateViewPasswordWrapper = document.getElementById('public-create-v
 const publicCreateViewPassword = document.getElementById('public-create-view-password');
 const publicCreateViewPasswordToggle = document.getElementById('public-create-view-password-toggle');
 const publicCreateViewerUploads = document.getElementById('public-create-viewer-uploads');
+const publicCreateViewerUploadsWrapper = document.getElementById('public-create-viewer-uploads-wrapper');
 const publicCreateEditorPasswordCheck = document.getElementById('public-create-editor-password-check');
 const publicCreateEditorPasswordWrapper = document.getElementById('public-create-editor-password-wrapper');
 const publicCreateEditorPassword = document.getElementById('public-create-editor-password');
 const publicCreateEditorPasswordToggle = document.getElementById('public-create-editor-password-toggle');
+const publicCreateLifetimeDays = document.getElementById('public-create-lifetime-days');
 const recentVisits = document.getElementById('recent-visits');
 const recentList = document.getElementById('recent-list');
 
@@ -207,6 +209,12 @@ window.addEventListener('DOMContentLoaded', () => {
                 publicCreateAdvanced.style.display = 'block';
                 publicCreateAdvancedToggle.setAttribute('aria-expanded', 'true');
                 initializeAdvancedSettings();
+                // Always update label text when opening advanced settings
+                updateEditorPasswordLabel();
+                // Set visibility of "Anyone with view..." field based on editor password checkbox state
+                if (publicCreateEditorPasswordCheck && publicCreateViewerUploadsWrapper) {
+                    publicCreateViewerUploadsWrapper.style.display = publicCreateEditorPasswordCheck.checked ? 'block' : 'none';
+                }
             }
         });
     }
@@ -237,9 +245,21 @@ window.addEventListener('DOMContentLoaded', () => {
             if (publicCreateEditorPasswordCheck.checked) {
                 publicCreateEditorPasswordWrapper.style.display = 'block';
                 publicCreateEditorPassword.focus();
+                // Show "Anyone with view..." field when special password is enabled
+                if (publicCreateViewerUploadsWrapper) {
+                    publicCreateViewerUploadsWrapper.style.display = 'block';
+                }
+                // Update label text to reflect current viewer uploads state
+                updateEditorPasswordLabel();
             } else {
                 publicCreateEditorPasswordWrapper.style.display = 'none';
                 publicCreateEditorPassword.value = '';
+                // Hide "Anyone with view..." field when special password is disabled
+                if (publicCreateViewerUploadsWrapper) {
+                    publicCreateViewerUploadsWrapper.style.display = 'none';
+                }
+                // Update label text to default when special password is disabled
+                updateEditorPasswordLabel();
             }
         });
     }
@@ -610,6 +630,10 @@ async function loadPublicConfig() {
         const allowShares = resp.ok && data.success && !!data.allowPublicGalleryCreation;
         publicConfig = data.success ? data : null;
         contactEmail = data.contactEmail || '';
+        // Update lifetime days display
+        if (publicCreateLifetimeDays && publicConfig && publicConfig.publicDefaults && publicConfig.publicDefaults.lifetimeDays) {
+            publicCreateLifetimeDays.textContent = publicConfig.publicDefaults.lifetimeDays;
+        }
         if (publicCreate) publicCreate.style.display = allowShares ? 'block' : 'none';
         if (publicCreateToggle) publicCreateToggle.style.display = allowShares ? 'inline-flex' : 'none';
         if (publicCreateForm && !allowShares) publicCreateForm.style.display = 'none';
@@ -674,7 +698,7 @@ function updateEditorPasswordLabel() {
         if (publicCreateViewerUploads.checked) {
             label.textContent = 'Special password required to delete photos/videos';
         } else {
-            label.textContent = 'Special password to upload or delete photos/videos';
+            label.textContent = 'Special password required to upload or delete photos/videos';
         }
     }
 }
@@ -687,8 +711,22 @@ function initializeAdvancedSettings() {
         publicCreateViewerUploads.checked = !!publicConfig.publicDefaults.viewerUploadsEnabled;
     }
     
+    // Update lifetime days display
+    if (publicCreateLifetimeDays && publicConfig.publicDefaults.lifetimeDays) {
+        publicCreateLifetimeDays.textContent = publicConfig.publicDefaults.lifetimeDays;
+    }
+    
     // Update editor password label text based on viewer uploads setting
     updateEditorPasswordLabel();
+    
+    // Set initial visibility of "Anyone with view..." field based on editor password checkbox state
+    if (publicCreateEditorPasswordCheck && publicCreateViewerUploadsWrapper) {
+        if (publicCreateEditorPasswordCheck.checked) {
+            publicCreateViewerUploadsWrapper.style.display = 'block';
+        } else {
+            publicCreateViewerUploadsWrapper.style.display = 'none';
+        }
+    }
 }
 
 // Initialize label text on page load
@@ -697,9 +735,17 @@ if (publicCreateViewerUploads) {
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', () => {
             updateEditorPasswordLabel();
+            // Set initial visibility of "Anyone with view..." field
+            if (publicCreateEditorPasswordCheck && publicCreateViewerUploadsWrapper) {
+                publicCreateViewerUploadsWrapper.style.display = publicCreateEditorPasswordCheck.checked ? 'block' : 'none';
+            }
         });
     } else {
         updateEditorPasswordLabel();
+        // Set initial visibility of "Anyone with view..." field
+        if (publicCreateEditorPasswordCheck && publicCreateViewerUploadsWrapper) {
+            publicCreateViewerUploadsWrapper.style.display = publicCreateEditorPasswordCheck.checked ? 'block' : 'none';
+        }
     }
 }
 

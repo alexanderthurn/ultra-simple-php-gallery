@@ -192,7 +192,7 @@
                                     <input type="text" id="public-create-name" placeholder="funny-goose-bump" readonly>
                                     <button id="public-create-submit" class="btn-primary">Create</button>
                                 </div>
-                                <div class="public-create-help">This is the name of your share. You need to remember it, otherwise you can't open your share later</div>
+                                <div class="public-create-help">This is the name of your share. You need to remember it as we don't store any personal data about you (like your e-mail address). If you forget it, you can't open your share later. The name can be copied on the next page and will be stored in your browser locally. The photos will be stored for <span id="public-create-lifetime-days">30</span> days.</div>
                             </div>
                             <div class="public-create-advanced-toggle-row">
                                 <button type="button" id="public-create-advanced-toggle" class="btn-secondary btn-ghost" aria-expanded="false">
@@ -221,12 +221,6 @@
                                     </div>
                                     <div class="public-create-field">
                                         <label class="public-create-checkbox-label">
-                                            <input type="checkbox" id="public-create-viewer-uploads">
-                                            <span>Anyone with view access can upload photos/videos</span>
-                                        </label>
-                                    </div>
-                                    <div class="public-create-field">
-                                        <label class="public-create-checkbox-label">
                                             <input type="checkbox" id="public-create-editor-password-check">
                                             <span id="public-create-editor-password-label">Special password required to upload or delete photos/videos</span>
                                         </label>
@@ -242,7 +236,13 @@
                                             </div>
                                         </div>
                                     </div>
-                                    <div class="public-create-hint">You can change access rules later only by contacting the admin of this page.</div>
+                                    <div class="public-create-field" id="public-create-viewer-uploads-wrapper" style="display: none;">
+                                        <label class="public-create-checkbox-label">
+                                            <input type="checkbox" id="public-create-viewer-uploads">
+                                            <span>Anyone with view access can upload photos/videos</span>
+                                        </label>
+                                    </div>
+                                    <div class="public-create-hint">You can change access rules later on only by contacting the admin of this page.</div>
                                 </div>
                             </div>
                             <div class="public-create-actions">
