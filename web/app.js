@@ -98,6 +98,17 @@ const publicCreateName = document.getElementById('public-create-name');
 const publicCreateRefresh = document.getElementById('public-create-refresh');
 const publicCreateSubmit = document.getElementById('public-create-submit');
 const publicCreateStatus = document.getElementById('public-create-status');
+const publicCreateAdvancedToggle = document.getElementById('public-create-advanced-toggle');
+const publicCreateAdvanced = document.getElementById('public-create-advanced');
+const publicCreateViewPasswordCheck = document.getElementById('public-create-view-password-check');
+const publicCreateViewPasswordWrapper = document.getElementById('public-create-view-password-wrapper');
+const publicCreateViewPassword = document.getElementById('public-create-view-password');
+const publicCreateViewPasswordToggle = document.getElementById('public-create-view-password-toggle');
+const publicCreateViewerUploads = document.getElementById('public-create-viewer-uploads');
+const publicCreateEditorPasswordCheck = document.getElementById('public-create-editor-password-check');
+const publicCreateEditorPasswordWrapper = document.getElementById('public-create-editor-password-wrapper');
+const publicCreateEditorPassword = document.getElementById('public-create-editor-password');
+const publicCreateEditorPasswordToggle = document.getElementById('public-create-editor-password-toggle');
 const recentVisits = document.getElementById('recent-visits');
 const recentList = document.getElementById('recent-list');
 
@@ -181,6 +192,83 @@ window.addEventListener('DOMContentLoaded', () => {
             publicCreateToggle.setAttribute('aria-expanded', 'true');
             if (!nameSuggestions || !nameSuggestions.length) {
                 fetchNameSuggestions();
+            }
+        });
+    }
+
+    // Advanced settings toggle
+    if (publicCreateAdvancedToggle) {
+        publicCreateAdvancedToggle.addEventListener('click', () => {
+            const isExpanded = publicCreateAdvancedToggle.getAttribute('aria-expanded') === 'true';
+            if (isExpanded) {
+                publicCreateAdvanced.style.display = 'none';
+                publicCreateAdvancedToggle.setAttribute('aria-expanded', 'false');
+            } else {
+                publicCreateAdvanced.style.display = 'block';
+                publicCreateAdvancedToggle.setAttribute('aria-expanded', 'true');
+                initializeAdvancedSettings();
+            }
+        });
+    }
+
+    // View password checkbox
+    if (publicCreateViewPasswordCheck) {
+        publicCreateViewPasswordCheck.addEventListener('change', () => {
+            if (publicCreateViewPasswordCheck.checked) {
+                publicCreateViewPasswordWrapper.style.display = 'block';
+                publicCreateViewPassword.focus();
+            } else {
+                publicCreateViewPasswordWrapper.style.display = 'none';
+                publicCreateViewPassword.value = '';
+            }
+        });
+    }
+
+    // Viewer uploads checkbox - update editor password label text
+    if (publicCreateViewerUploads) {
+        publicCreateViewerUploads.addEventListener('change', () => {
+            updateEditorPasswordLabel();
+        });
+    }
+
+    // Editor password checkbox
+    if (publicCreateEditorPasswordCheck) {
+        publicCreateEditorPasswordCheck.addEventListener('change', () => {
+            if (publicCreateEditorPasswordCheck.checked) {
+                publicCreateEditorPasswordWrapper.style.display = 'block';
+                publicCreateEditorPassword.focus();
+            } else {
+                publicCreateEditorPasswordWrapper.style.display = 'none';
+                publicCreateEditorPassword.value = '';
+            }
+        });
+    }
+
+    // Password toggle buttons
+    if (publicCreateViewPasswordToggle) {
+        publicCreateViewPasswordToggle.addEventListener('click', () => {
+            const input = publicCreateViewPassword;
+            const type = input.getAttribute('type') === 'password' ? 'text' : 'password';
+            input.setAttribute('type', type);
+            const svg = publicCreateViewPasswordToggle.querySelector('svg');
+            if (type === 'text') {
+                svg.innerHTML = '<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line>';
+            } else {
+                svg.innerHTML = '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle>';
+            }
+        });
+    }
+
+    if (publicCreateEditorPasswordToggle) {
+        publicCreateEditorPasswordToggle.addEventListener('click', () => {
+            const input = publicCreateEditorPassword;
+            const type = input.getAttribute('type') === 'password' ? 'text' : 'password';
+            input.setAttribute('type', type);
+            const svg = publicCreateEditorPasswordToggle.querySelector('svg');
+            if (type === 'text') {
+                svg.innerHTML = '<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line>';
+            } else {
+                svg.innerHTML = '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle>';
             }
         });
     }
@@ -529,6 +617,10 @@ async function loadPublicConfig() {
         if (orLabel) orLabel.style.display = allowShares ? 'block' : 'none';
         if (publicCreateForm && !allowShares) publicCreateForm.style.display = 'none';
         await fetchNameSuggestions();
+        // Initialize advanced settings with defaults if form is already visible
+        if (publicCreateForm && publicCreateForm.style.display !== 'none') {
+            initializeAdvancedSettings();
+        }
     } catch (error) {
         // silent fail; public create stays hidden
         publicConfig = null;
@@ -575,6 +667,42 @@ function updatePublicCreateName() {
     setTimeout(() => publicCreateName.classList.remove('spin-text'), 400);
 }
 
+// Function to update editor password label text
+function updateEditorPasswordLabel() {
+    const label = document.getElementById('public-create-editor-password-label');
+    if (label && publicCreateViewerUploads) {
+        if (publicCreateViewerUploads.checked) {
+            label.textContent = 'People need a special password to delete photos';
+        } else {
+            label.textContent = 'People need a special password to upload photos/delete';
+        }
+    }
+}
+
+function initializeAdvancedSettings() {
+    if (!publicConfig || !publicConfig.publicDefaults) return;
+    
+    // Pre-fill viewer uploads checkbox with default
+    if (publicCreateViewerUploads && publicConfig.publicDefaults.viewerUploadsEnabled !== undefined) {
+        publicCreateViewerUploads.checked = !!publicConfig.publicDefaults.viewerUploadsEnabled;
+    }
+    
+    // Update editor password label text based on viewer uploads setting
+    updateEditorPasswordLabel();
+}
+
+// Initialize label text on page load
+if (publicCreateViewerUploads) {
+    // Wait for DOM to be ready
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => {
+            updateEditorPasswordLabel();
+        });
+    } else {
+        updateEditorPasswordLabel();
+    }
+}
+
 async function createPublicGallery() {
     if (!publicConfig || !publicConfig.allowPublicGalleryCreation) return;
     const name = (publicCreateName?.value || '').trim();
@@ -585,6 +713,45 @@ async function createPublicGallery() {
         }
         return;
     }
+
+    // Check if advanced settings are expanded
+    const isAdvancedExpanded = publicCreateAdvanced && publicCreateAdvanced.style.display !== 'none';
+    
+    // Collect advanced settings
+    let viewPassword = '';
+    let editorPassword = '';
+    let viewerUploadsEnabled = false;
+
+    if (isAdvancedExpanded) {
+        // Use values from form if advanced settings are expanded
+        if (publicCreateViewPasswordCheck && publicCreateViewPasswordCheck.checked) {
+            viewPassword = (publicCreateViewPassword?.value || '').trim();
+            if (!viewPassword) {
+                if (publicCreateStatus) {
+                    publicCreateStatus.textContent = 'View password is required when enabled';
+                    publicCreateStatus.style.color = 'var(--error)';
+                }
+                return;
+            }
+        }
+        
+        if (publicCreateEditorPasswordCheck && publicCreateEditorPasswordCheck.checked) {
+            editorPassword = (publicCreateEditorPassword?.value || '').trim();
+            if (!editorPassword) {
+                if (publicCreateStatus) {
+                    publicCreateStatus.textContent = 'Editor password is required when enabled';
+                    publicCreateStatus.style.color = 'var(--error)';
+                }
+                return;
+            }
+        }
+        
+        viewerUploadsEnabled = publicCreateViewerUploads && publicCreateViewerUploads.checked;
+    } else {
+        // Use defaults when advanced settings are collapsed
+        viewerUploadsEnabled = publicConfig.publicDefaults && !!publicConfig.publicDefaults.viewerUploadsEnabled;
+    }
+
     if (publicCreateStatus) {
         publicCreateStatus.textContent = 'Creating...';
         publicCreateStatus.style.color = 'var(--text-secondary)';
@@ -593,6 +760,13 @@ async function createPublicGallery() {
         const formData = new FormData();
         formData.append('action', 'create_gallery_public');
         formData.append('name', name);
+        if (viewPassword) {
+            formData.append('view_password', viewPassword);
+        }
+        if (editorPassword) {
+            formData.append('password', editorPassword);
+        }
+        formData.append('viewer_uploads', viewerUploadsEnabled ? '1' : '0');
         const resp = await fetch('api/index.php?action=create_gallery_public', {
             method: 'POST',
             body: formData

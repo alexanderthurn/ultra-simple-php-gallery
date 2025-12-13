@@ -218,6 +218,13 @@ function handleCreateGallery() {
     // Create initial gallery settings with admin defaults
     $settings = loadGallerySettings($sanitized, 'admin');
     
+    // Override viewerUploadsEnabled if provided
+    $viewerUploads = isset($_POST['viewer_uploads']) ? $_POST['viewer_uploads'] : '';
+    if ($viewerUploads === '1' || $viewerUploads === '0') {
+        $settings['viewerUploadsEnabled'] = $viewerUploads === '1';
+        saveGallerySettings($sanitized, $settings);
+    }
+    
     echo json_encode([
         'success' => true,
         'message' => 'Gallery created successfully',

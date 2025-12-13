@@ -755,8 +755,27 @@ function handleCreateGalleryPublic() {
         return;
     }
 
+    // Set passwords if provided
+    $viewPassword = isset($_POST['view_password']) ? trim($_POST['view_password']) : '';
+    $editorPassword = isset($_POST['password']) ? trim($_POST['password']) : '';
+    
+    if (!empty($viewPassword)) {
+        setGalleryViewPassword($sanitized, $viewPassword);
+    }
+    
+    if (!empty($editorPassword)) {
+        setGalleryPassword($sanitized, $editorPassword);
+    }
+
     // Initialize per-gallery settings using strict public defaults
     $gallerySettings = loadGallerySettings($sanitized, 'public', $settings);
+    
+    // Override viewerUploadsEnabled if provided
+    $viewerUploads = isset($_POST['viewer_uploads']) ? $_POST['viewer_uploads'] : '';
+    if ($viewerUploads === '1' || $viewerUploads === '0') {
+        $gallerySettings['viewerUploadsEnabled'] = $viewerUploads === '1';
+        saveGallerySettings($sanitized, $gallerySettings);
+    }
 
     echo json_encode([
         'success' => true,

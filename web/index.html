@@ -192,6 +192,58 @@
                                     <input type="text" id="public-create-name" placeholder="funny-goose-bump" readonly>
                                     <button id="public-create-submit" class="btn-primary">Create</button>
                                 </div>
+                                <div class="public-create-help">This is the name of your share. You need to remember it, otherwise you can't open your share later</div>
+                            </div>
+                            <div class="public-create-advanced-toggle-row">
+                                <button type="button" id="public-create-advanced-toggle" class="btn-secondary btn-ghost" aria-expanded="false">
+                                    <span>Advanced Settings</span>
+                                    <span class="toggle-icon">▼</span>
+                                </button>
+                            </div>
+                            <div class="public-create-advanced" id="public-create-advanced" style="display: none;">
+                                <div class="public-create-advanced-content">
+                                    <div class="public-create-field">
+                                        <label class="public-create-checkbox-label">
+                                            <input type="checkbox" id="public-create-view-password-check">
+                                            <span>People need a password to see the photos</span>
+                                        </label>
+                                        <div class="public-create-password-wrapper" id="public-create-view-password-wrapper" style="display: none;">
+                                            <div class="input-with-button">
+                                                <input type="password" id="public-create-view-password" placeholder="Viewer password">
+                                                <button type="button" class="btn-icon password-toggle" id="public-create-view-password-toggle" aria-label="Show password">
+                                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                                        <circle cx="12" cy="12" r="3"></circle>
+                                                    </svg>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="public-create-field">
+                                        <label class="public-create-checkbox-label">
+                                            <input type="checkbox" id="public-create-viewer-uploads">
+                                            <span>Anyone with view access can upload images</span>
+                                        </label>
+                                    </div>
+                                    <div class="public-create-field">
+                                        <label class="public-create-checkbox-label">
+                                            <input type="checkbox" id="public-create-editor-password-check">
+                                            <span id="public-create-editor-password-label">People need a special password to upload photos/delete</span>
+                                        </label>
+                                        <div class="public-create-password-wrapper" id="public-create-editor-password-wrapper" style="display: none;">
+                                            <div class="input-with-button">
+                                                <input type="password" id="public-create-editor-password" placeholder="Editor password">
+                                                <button type="button" class="btn-icon password-toggle" id="public-create-editor-password-toggle" aria-label="Show password">
+                                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                                        <circle cx="12" cy="12" r="3"></circle>
+                                                    </svg>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="public-create-hint">You can change access rules later only by contacting the admin of this page.</div>
+                                </div>
                             </div>
                             <div class="public-create-actions">
                                 <span id="public-create-status" class="public-create-status"></span>

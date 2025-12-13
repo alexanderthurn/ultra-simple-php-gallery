@@ -16,6 +16,7 @@ const createGalleryForm = document.getElementById('create-gallery-form');
 const newGalleryName = document.getElementById('new-gallery-name');
 const newGalleryPassword = document.getElementById('new-gallery-password');
 const newGalleryViewPassword = document.getElementById('new-gallery-view-password');
+const newGalleryViewerUploads = document.getElementById('new-gallery-viewer-uploads');
 const createCancel = document.getElementById('create-cancel');
 const passwordModal = document.getElementById('password-modal');
 const setPasswordForm = document.getElementById('set-password-form');
@@ -136,6 +137,7 @@ function setupEventListeners() {
             newGalleryName.value = '';
             newGalleryPassword.value = '';
             if (newGalleryViewPassword) newGalleryViewPassword.value = '';
+            if (newGalleryViewerUploads) newGalleryViewerUploads.checked = false;
             createModal.style.display = 'flex';
         });
     }
@@ -153,6 +155,7 @@ function setupEventListeners() {
             const name = newGalleryName.value.trim();
             const password = newGalleryPassword.value.trim();
             const viewPassword = newGalleryViewPassword ? newGalleryViewPassword.value.trim() : '';
+            const viewerUploads = newGalleryViewerUploads ? newGalleryViewerUploads.checked : false;
             
             if (!name) {
                 alert('Share name is required');
@@ -169,6 +172,7 @@ function setupEventListeners() {
                 if (viewPassword) {
                     formData.append('view_password', viewPassword);
                 }
+                formData.append('viewer_uploads', viewerUploads ? '1' : '0');
                 
                 const response = await fetch('api.php?action=create_gallery', {
                     method: 'POST',
